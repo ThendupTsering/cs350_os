@@ -274,6 +274,22 @@ cmd_panic(int nargs, char **args)
 }
 
 /*
+ * Command for enabling debugging messages
+ */
+static
+int
+cmd_dth(int nargs, char **args)
+{
+    (void)nargs;
+    (void)args;
+
+    dbflags = DB_THREADS;
+    kprintf("Debug mode enabled\n");
+    
+    return 0;
+}
+
+/*
  * Command for shutting down.
  */
 static
@@ -436,6 +452,7 @@ static const char *opsmenu[] = {
 	"[pwd]     Print current directory   ",
 	"[sync]    Sync filesystems          ",
 	"[panic]   Intentional panic         ",
+    "[dth]     Enable Debugging messages   ",
 	"[q]       Quit and shut down        ",
 	NULL
 };
@@ -546,6 +563,7 @@ static struct {
 	{ "pwd",	cmd_pwd },
 	{ "sync",	cmd_sync },
 	{ "panic",	cmd_panic },
+    { "dth",    cmd_dth },
 	{ "q",		cmd_quit },
 	{ "exit",	cmd_quit },
 	{ "halt",	cmd_quit },
