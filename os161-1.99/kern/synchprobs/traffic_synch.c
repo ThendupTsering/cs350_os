@@ -27,10 +27,15 @@ static struct cv *cvDestinationSouth;
 static struct cv *cvDestinationEast;
 static struct cv *cvDestinationWest;
 // Boolean of blocked paths:
-volatile static bool N2E, N2S, N2W;
-volatile static bool E2S, E2W, E2N;
-volatile static bool S2W, S2N, S2E;
-volatile static bool W2N, W2E, W2S;
+static volatile bool N2E, N2S, N2W;
+static volatile bool E2S, E2W, E2N;
+static volatile bool S2W, S2N, S2E;
+static volatile bool W2N, W2E, W2S;
+// Helper Functions:
+static bool blockedNW(void);
+static bool blockedNE(void);
+static bool blockedSW(void);
+static bool blockedSE(void);
 
 
 
@@ -48,19 +53,19 @@ intersection_sync_init(void)
   if (intersectionLock == NULL) {
     panic("could not create intersection lock");
   }
-  cvDestinationNorth = cv_create('cvDestinationNorth');
+  cvDestinationNorth = cv_create("cvDestinationNorth");
   if (cvDestinationNorth == NULL) {
     panic("could not create condition variable cvDestinationNorth");
   }
-  cvDestinationSouth = cv_create('cvDestinationSouth');
+  cvDestinationSouth = cv_create("cvDestinationSouth");
   if (cvDestinationSouth == NULL) {
     panic("could not create condition variable cvDestinationSouth");
   }
-  cvDestinationEast = cv_create('cvDestinationEast');
+  cvDestinationEast = cv_create("cvDestinationEast");
   if (cvDestinationEast == NULL) {
     panic("could not create condition variable cvDestinationEast");
   }
-  cvDestinationWest = cv_create('cvDestinationWest');
+  cvDestinationWest = cv_create("cvDestinationWest");
   if (cvDestinationWest == NULL) {
     panic("could not create condition variable cvDestinationWest");
   }
@@ -113,28 +118,28 @@ intersection_sync_cleanup(void)
 bool
 blockedNW(void)
 {
-  ret = (N2W && N2S && N2E && E2W && E2S && S2W);
+  bool ret = (N2W && N2S && N2E && E2W && E2S && S2W);
   return ret;
 }
 
 bool
 blockedNE(void)
 {
-  ret = (E2N && E2W && E2S && S2N && S2W && W2N);
+  bool ret = (E2N && E2W && E2S && S2N && S2W && W2N);
   return ret;
 }
 
 bool
 blockedSE(void)
 {
-  ret = (S2E && S2N && S2W && W2E && W2N && N2E);
+  bool ret = (S2E && S2N && S2W && W2E && W2N && N2E);
   return ret;
 }
 
 bool
 blockedSW(void)
 {
-  ret = (W2S && W2E && W2N && N2S && N2E && E2S);
+  bool ret = (W2S && W2E && W2N && N2S && N2E && E2S);
   return ret;
 }
 
