@@ -173,7 +173,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             N2S = true;
           }
-          break;
         case east:
           if (!N2E) {
             KASSERT(cvDestinationEast != NULL);
@@ -182,7 +181,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             N2E = true;
           }
-          break;
         case west:
           if (!N2W) {
             KASSERT(cvDestinationWest != NULL);
@@ -191,9 +189,7 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             N2W = true;
           }
-          break;
       }
-      break;
     case east:
       switch (destination) {
         case west:
@@ -204,7 +200,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             E2W = true;
           }
-          break;
         case south:
           if (!E2S) {
             KASSERT(cvDestinationSouth != NULL);
@@ -213,7 +208,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             E2S = true;
           }
-          break;
         case north:
           if (!E2N) {
             KASSERT(cvDestinationNorth != NULL);
@@ -222,9 +216,7 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             E2N = true;
           }
-          break;
       }
-      break;
     case south:
       switch (destination) {
         case north:
@@ -235,7 +227,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             S2N = true;
           }
-          break;
         case east:
           if (!S2E) {
             KASSERT(cvDestinationEast != NULL);
@@ -244,7 +235,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             S2E = true;
           }
-          break;
         case west:
           if (!S2W) {
             KASSERT(cvDestinationWest != NULL);
@@ -253,9 +243,7 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             S2W = true;
           }
-          break;
       }
-      break;
     case west:
       switch (destination) {
         case east:
@@ -266,7 +254,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             W2E = true;
           }
-          break;
         case south:
           if (!W2S) {
             KASSERT(cvDestinationSouth != NULL);
@@ -275,7 +262,6 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             W2S = true;
           }
-          break;
         case north:
           if (!W2N) {
             KASSERT(cvDestinationNorth != NULL);
@@ -284,9 +270,7 @@ intersection_before_entry(Direction origin, Direction destination)
             }
             W2N = true;
           }
-          break;
         }
-      break;
   }
   lock_release(intersectionLock);
 }
@@ -312,64 +296,48 @@ intersection_after_exit(Direction origin, Direction destination)
         case south:
           N2S = false;
           cv_signal(cvDestinationSouth,intersectionLock);
-          break;
         case east:
           N2E = false;
           cv_signal(cvDestinationEast,intersectionLock);
-          break;
         case west:
           N2W = false;
           cv_signal(cvDestinationWest,intersectionLock);
-          break;
       }
-      break;
     case east:
       switch (destination) {
         case west:
           E2W = false;
           cv_signal(cvDestinationWest,intersectionLock);
-          break;
         case south:
           E2S = false;
           cv_signal(cvDestinationSouth,intersectionLock);
-          break;
         case north:
           E2N = false;
           cv_signal(cvDestinationNorth,intersectionLock);
-          break;
       }
-      break;
     case south:
       switch (destination) {
         case north:
           S2N = false;
           cv_signal(cvDestinationNorth,intersectionLock);
-          break;
         case east:
           S2E = false;
           cv_signal(cvDestinationEast,intersectionLock);
-          break;
         case west:
           S2W = false;
           cv_signal(cvDestinationWest,intersectionLock);
-          break;
       }
-      break;
     case west:
       switch (destination) {
         case east:
           W2E = false;
           cv_signal(cvDestinationEast,intersectionLock);
-          break;
         case south:
           W2S = false;
           cv_signal(cvDestinationSouth,intersectionLock);
-          break;
         case north:
           W2N = false;
           cv_signal(cvDestinationNorth,intersectionLock);
-          break;
         }
-      break;
   }
 }
