@@ -168,6 +168,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (N2S > 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedNW() || blockedSW()) {
+          kprintf("N2S\nNo. of cars: " + N2S);
           cv_wait(cvDestinationSouth,intersectionLock);
         }
       // }
@@ -177,6 +178,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (N2E > 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedNW() || blockedSW() || blockedSE()) {
+          kprintf("N2E\nNo. of cars: " + N2E);
           cv_wait(cvDestinationEast,intersectionLock);
         }
       // }
@@ -186,6 +188,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (N2W > 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedNW()) {
+          kprintf("N2W\nNo. of cars: " + N2W);
           cv_wait(cvDestinationWest,intersectionLock);
         }
       // }
@@ -197,6 +200,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (E2W > 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedNE() || blockedNW()) {
+          kprintf("E2W\nNo. of cars: " + E2W);
           cv_wait(cvDestinationWest,intersectionLock);
         }
       // }
@@ -206,6 +210,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (E2S > 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedNE() || blockedNW() || blockedSW()) {
+          kprintf("E2S\nNo. of cars: " + E2S);
           cv_wait(cvDestinationWest,intersectionLock);
         }
       // }
@@ -215,6 +220,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (E2N > 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedNE()) {
+          kprintf("E2N\nNo. of cars: " + E2N);
           cv_wait(cvDestinationNorth,intersectionLock);
         }
       // }
@@ -226,6 +232,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (S2N > 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedSE() || blockedNE()) {
+          kprintf("S2N\nNo. of cars: " + S2N);
           cv_wait(cvDestinationNorth,intersectionLock);
         }
       // }
@@ -235,6 +242,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (S2E > 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedSE()) {
+          kprintf("S2E\nNo. of cars: " + S2E);
           cv_wait(cvDestinationEast,intersectionLock);
         }
       // }
@@ -244,6 +252,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (S2W > 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedSE() || blockedNE() || blockedNW()) {
+          kprintf("S2W\nNo. of cars: " + S2W);
           cv_wait(cvDestinationWest,intersectionLock);
         }
       // }
@@ -255,6 +264,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (W2E > 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedSW() || blockedSE()) {
+          kprintf("W2E\nNo. of cars: " + W2E);
           cv_wait(cvDestinationEast,intersectionLock);
         }
       // }
@@ -264,6 +274,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (W2S > 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedSW()) {
+          kprintf("W2S\nNo. of cars: " + W2S);
           cv_wait(cvDestinationSouth,intersectionLock);
         }
       // }
@@ -273,6 +284,7 @@ intersection_before_entry(Direction origin, Direction destination)
       // if (W2N > 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedSW() || blockedSE() || blockedNE()) {
+          kprintf("W2N\nNo. of cars: " + W2N);
           cv_wait(cvDestinationNorth,intersectionLock);
         }
       // }
