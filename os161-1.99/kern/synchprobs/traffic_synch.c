@@ -165,117 +165,117 @@ intersection_before_entry(Direction origin, Direction destination)
   if (origin == north) {
     if (destination == south) {
       // Straight
-      if (N2S > 0) {
+      // if (N2S > 0) {
         KASSERT(cvDestinationSouth != NULL);
-        if (blockedNW() || blockedSW()) {
+        while (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
-      }
+      // }
       N2S = N2S + 1;
     } else if (destination == east) {
       // Left
-      if (N2E > 0) {
+      // if (N2E > 0) {
         KASSERT(cvDestinationEast != NULL);
-        if (blockedNW() || blockedSW() || blockedSE()) {
+        while (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
-      }
+      // }
       N2E = N2E + 1;
     } else if (destination == west) {
       // Right
-      if (N2W > 0) {
+      // if (N2W > 0) {
         KASSERT(cvDestinationWest != NULL);
-        if (blockedNW()) {
+        while (blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-      }
+      // }
       N2W = N2W + 1;
     }
   } else if (origin == east) {
     if (destination == west) {
       // Straight
-      if (E2W > 0) {
+      // if (E2W > 0) {
         KASSERT(cvDestinationWest != NULL);
-        if (blockedNE() || blockedNW()) {
+        while (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-      }
+      // }
       E2W = E2W + 1;
     } else if (destination == south) {
       // Left
-      if (E2S > 0) {
+      // if (E2S > 0) {
         KASSERT(cvDestinationSouth != NULL);
-        if (blockedNE() || blockedNW() || blockedSW()) {
+        while (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-      }
+      // }
       E2S = E2S + 1;
     } else if (destination == north) {
       // Right
-      if (E2N > 0) {
+      // if (E2N > 0) {
         KASSERT(cvDestinationNorth != NULL);
-        if (blockedNE()) {
+        while (blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
-      }
+      // }
       E2N = E2N + 1;
     }
   } else if (origin == south) {
     if (destination == north) {
       // Straight
-      if (S2N > 0) {
+      // if (S2N > 0) {
         KASSERT(cvDestinationNorth != NULL);
-        if (blockedSE() || blockedNE()) {
+        while (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
-      }
+      // }
       S2N = S2N + 1;
     } else if (destination == east) {
       // Right
-      if (S2E > 0) {
+      // if (S2E > 0) {
         KASSERT(cvDestinationEast != NULL);
-        if (blockedSE()) {
+        while (blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
-      }
+      // }
       S2E = S2E + 1;
     } else if (destination == west) {
       // Left
-      if (S2W > 0) {
+      // if (S2W > 0) {
         KASSERT(cvDestinationWest != NULL);
-        if (blockedSE() || blockedNE() || blockedNW()) {
+        while (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-      }
+      // }
       S2W = S2W + 1;
     }
   } else if (origin == west) {
     if (destination == east) {
       // Straight
-      if (W2E > 0) {
+      // if (W2E > 0) {
         KASSERT(cvDestinationEast != NULL);
-        if (blockedSW() || blockedSE()) {
+        while (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
-      }
+      // }
       W2E = W2E + 1;
     } else if (destination == south) {
       // Right
-      if (W2S > 0) {
+      // if (W2S > 0) {
         KASSERT(cvDestinationSouth != NULL);
-        if (blockedSW()) {
+        while (blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
-      }
+      // }
       W2S = W2S + 1;
     } else if (destination == north) {
       // Left
-      if (W2N > 0) {
+      // if (W2N > 0) {
         KASSERT(cvDestinationNorth != NULL);
-        if (blockedSW() || blockedSE() || blockedNE()) {
+        while (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
-      }
+      // }
       W2N = W2N + 1;
     }
   }
