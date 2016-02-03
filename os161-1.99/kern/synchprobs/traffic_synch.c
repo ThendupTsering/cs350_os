@@ -163,112 +163,108 @@ intersection_before_entry(Direction origin, Direction destination)
   KASSERT(intersectionLock != NULL);
   lock_acquire(intersectionLock);
   if (origin == north) {
-    bool originNorth = (N2S || N2E || N2W);
     if (destination == south) {
-      if (!originNorth) {
+      if (!N2S) {
         KASSERT(cvDestinationSouth != NULL);
         if (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
+        N2S = true;
       }
-      N2S = true;
     } else if (destination == east) {
-      if (!originNorth) {
+      if (!N2E) {
         KASSERT(cvDestinationEast != NULL);
         if (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
+        N2E = true;
       }
-      N2E = true;
     } else if (destination == west) {
-      if (!originNorth) {
+      if (!N2W) {
         KASSERT(cvDestinationWest != NULL);
         if (blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        N2W = true;
       }
-      N2W = true;
     }
   } else if (origin == east) {
-    bool originEast = (E2S || E2W || E2N);
     if (destination == west) {
-      if (!originEast) {
+      if (!E2W) {
         KASSERT(cvDestinationWest != NULL);
         if (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        E2W = true;
       }
-      E2W = true;
     } else if (destination == south) {
-      if (!originEast) {
+      if (!E2S) {
         KASSERT(cvDestinationSouth != NULL);
         if (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        E2S = true;
       }
-      E2S = true;
     } else if (destination == north) {
-      if (!originEast) {
+      if (!E2N) {
         KASSERT(cvDestinationNorth != NULL);
         if (blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
+        E2N = true;
       }
-      E2N = true;
     }
   } else if (origin == south) {
-    bool originSouth = (S2W || S2N || S2E);
     if (destination == north) {
-      if (!originSouth) {
+      if (!S2N) {
         KASSERT(cvDestinationNorth != NULL);
         if (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
+        S2N = true;
       }
-      S2N = true;
     } else if (destination == east) {
-      if (!originSouth) {
+      if (!S2E) {
         KASSERT(cvDestinationEast != NULL);
         if (blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
+        S2E = true;
       }
-      S2E = true;
     } else if (destination == west) {
-      if (!originSouth) {
+      if (!S2W) {
         KASSERT(cvDestinationWest != NULL);
         if (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        S2W = true;
       }
-      S2W = true;
     }
   } else if (origin == west) {
-    bool originWest = (W2N || W2E || W2S);
     if (destination == east) {
-      if (!originWest) {
+      if (!W2E) {
         KASSERT(cvDestinationEast != NULL);
         if (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
+        W2E = true;
       }
-      W2E = true;
     } else if (destination == south) {
-      if (!originWest) {
+      if (!W2S) {
         KASSERT(cvDestinationSouth != NULL);
         if (blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
+        W2S = true;
       }
-      W2S = true;
     } else if (destination == north) {
-      if (!originWest) {
+      if (!W2N) {
         KASSERT(cvDestinationNorth != NULL);
         if (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
+        W2N = true;
       }
-      W2N = true;
     }
   }
   lock_release(intersectionLock);
