@@ -118,28 +118,28 @@ intersection_sync_cleanup(void)
 bool
 blockedNW(void)
 {
-  bool ret = (N2W && N2S && N2E && E2W && E2S && S2W);
+  bool ret = (N2W || N2S || N2E || E2W || E2S || S2W);
   return ret;
 }
 
 bool
 blockedNE(void)
 {
-  bool ret = (E2N && E2W && E2S && S2N && S2W && W2N);
+  bool ret = (E2N || E2W || E2S || S2N || S2W || W2N);
   return ret;
 }
 
 bool
 blockedSE(void)
 {
-  bool ret = (S2E && S2N && S2W && W2E && W2N && N2E);
+  bool ret = (S2E || S2N || S2W || W2E || W2N || N2E);
   return ret;
 }
 
 bool
 blockedSW(void)
 {
-  bool ret = (W2S && W2E && W2N && N2S && N2E && E2S);
+  bool ret = (W2S || W2E || W2N || N2S || N2E || E2S);
   return ret;
 }
 
