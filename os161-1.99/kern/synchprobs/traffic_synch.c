@@ -31,6 +31,11 @@ static volatile bool N2E, N2S, N2W;
 static volatile bool E2S, E2W, E2N;
 static volatile bool S2W, S2N, S2E;
 static volatile bool W2N, W2E, W2S;
+// Quadrants and Origin of occupant
+static volatile char * quadNW;
+static volatile char * quadNE;
+static volatile char * quadSW;
+static volatile char * quadSE;
 // Helper Functions:
 static bool blockedNW(void);
 static bool blockedNE(void);
@@ -69,6 +74,7 @@ intersection_sync_init(void)
   if (cvDestinationWest == NULL) {
     panic("could not create condition variable cvDestinationWest");
   }
+
   // All paths are free before traffic starts
   N2E = false;
   N2S = false;
@@ -82,6 +88,12 @@ intersection_sync_init(void)
   W2N = false;
   W2E = false;
   W2S = false;
+
+  // All quadrants are free before traffic starts
+  quadNW = NULL;
+  quadNE = NULL;
+  quadSW = NULL;
+  quadSE = NULL;
   return;
 }
 
@@ -163,111 +175,131 @@ intersection_before_entry(Direction origin, Direction destination)
   KASSERT(intersectionLock != NULL);
   lock_acquire(intersectionLock);
   if (origin == north) {
-    bool originNorth = (N2S || N2E || N2W);
     if (destination == south) {
-      if (!originNorth) {
+      if (!(quadNW == "NORTH")) {
         KASSERT(cvDestinationSouth != NULL);
         if (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
       }
+      quadNW = "NORTH";
+      // quadSW = "NORTH";
       N2S = true;
     } else if (destination == east) {
-      if (!originNorth) {
+      if (!(quadNW == "NORTH")) {
         KASSERT(cvDestinationEast != NULL);
         if (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
       }
+      quadNW = "NORTH";
+      // quadSW = "NORTH";
+      // quadSE = "NORTH";
       N2E = true;
     } else if (destination == west) {
-      if (!originNorth) {
+      if (!(quadNW == "NORTH")) {
         KASSERT(cvDestinationWest != NULL);
         if (blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
       }
+      quadNW = "NORTH";
       N2W = true;
     }
   } else if (origin == east) {
-    bool originEast = (E2S || E2W || E2N);
     if (destination == west) {
-      if (!originEast) {
+      if (!(quadNE == "EAST")) {
         KASSERT(cvDestinationWest != NULL);
         if (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
       }
+      quadNE = "EAST";
+      // quadNW = "EAST";
       E2W = true;
     } else if (destination == south) {
-      if (!originEast) {
+      if (!(quadNE == "EAST")) {
         KASSERT(cvDestinationSouth != NULL);
         if (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
       }
+      quadNE = "EAST";
+      // quadNW = "EAST";
+      // quadSW = "EAST";
       E2S = true;
     } else if (destination == north) {
-      if (!originEast) {
+      if (!(quadNE == "EAST")) {
         KASSERT(cvDestinationNorth != NULL);
         if (blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
       }
+      quadNE = "EAST";
       E2N = true;
     }
   } else if (origin == south) {
-    bool originSouth = (S2W || S2N || S2E);
     if (destination == north) {
-      if (!originSouth) {
+      if (!(quadSE == "SOUTH")) {
         KASSERT(cvDestinationNorth != NULL);
         if (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
       }
+      quadSE = "SOUTH";
+      // quadNE = "SOUTH";
       S2N = true;
     } else if (destination == east) {
-      if (!originSouth) {
+      if (!(quadSE == "SOUTH")) {
         KASSERT(cvDestinationEast != NULL);
         if (blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
       }
+      quadSE = "SOUTH";
       S2E = true;
     } else if (destination == west) {
-      if (!originSouth) {
+      if (!(quadSE == "SOUTH")) {
         KASSERT(cvDestinationWest != NULL);
         if (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
       }
+      quadSE = "SOUTH";
+      // quadNE = "SOUTH";
+      // quadNW = "SOUTH";
       S2W = true;
     }
   } else if (origin == west) {
-    bool originWest = (W2N || W2E || W2S);
     if (destination == east) {
-      if (!originWest) {
+      if (!(quadSW == "WEST")) {
         KASSERT(cvDestinationEast != NULL);
         if (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
       }
+      quadSW = "WEST";
+      // quadSE = "WEST";
       W2E = true;
     } else if (destination == south) {
-      if (!originWest) {
+      if (!(quadSW == "WEST")) {
         KASSERT(cvDestinationSouth != NULL);
         if (blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
       }
+      quadSW = "WEST";
       W2S = true;
     } else if (destination == north) {
-      if (!originWest) {
+      if (!(quadSW == "WEST")) {
         KASSERT(cvDestinationNorth != NULL);
         if (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
       }
+      quadSW = "WEST";
+      // quadSE = "WEST";
+      // quadNE = "WEST";
       W2N = true;
     }
   }
@@ -292,6 +324,7 @@ intersection_after_exit(Direction origin, Direction destination)
   KASSERT(intersectionLock != NULL);
   lock_acquire(intersectionLock);
   if (origin == north) {
+    quadNW = NULL;
     if (destination == south) {
       N2S = false;
       cv_broadcast(cvDestinationSouth,intersectionLock);
@@ -303,6 +336,7 @@ intersection_after_exit(Direction origin, Direction destination)
       cv_broadcast(cvDestinationWest,intersectionLock);
     }
   } else if (origin == east) {
+    quadNE = NULL;
     if (destination == west) {
       E2W = false;
       cv_broadcast(cvDestinationWest,intersectionLock);
@@ -314,6 +348,7 @@ intersection_after_exit(Direction origin, Direction destination)
       cv_broadcast(cvDestinationNorth,intersectionLock);
     }
   } else if (origin == south) {
+    quadSE = NULL;
     if (destination == north) {
       S2N = false;
       cv_broadcast(cvDestinationNorth,intersectionLock);
@@ -325,6 +360,7 @@ intersection_after_exit(Direction origin, Direction destination)
       cv_broadcast(cvDestinationWest,intersectionLock);
     }
   } else if (origin == west) {
+    quadSW = NULL;
     if (destination == east) {
       W2E = false;
       cv_broadcast(cvDestinationEast,intersectionLock);
