@@ -329,21 +329,21 @@ intersection_after_exit(Direction origin, Direction destination)
       kprintf("N2S car exited\n");
 			if (N2S == 0) {
         kprintf("Broadcast N2S exited!\n");
-	      cv_broadcast(cvDestinationSouth,intersectionLock);
+	      // cv_broadcast(cvDestinationSouth,intersectionLock);
 			}
     } else if (destination == east) {
       N2E = N2E - 1;
       kprintf("N2E car exited\n");
 			if (N2E == 0) {
         kprintf("Broadcast N2E exited!\n");
-	      cv_broadcast(cvDestinationEast,intersectionLock);
+	      // cv_broadcast(cvDestinationEast,intersectionLock);
 			}
     } else if (destination == west) {
       N2W = N2W - 1;
       kprintf("N2W car exited\n");
 			if (N2W == 0) {
         kprintf("Broadcast N2W exited!\n");
-	      cv_broadcast(cvDestinationWest,intersectionLock);
+	      // cv_broadcast(cvDestinationWest,intersectionLock);
 			}
     }
   } else if (origin == east) {
@@ -352,21 +352,21 @@ intersection_after_exit(Direction origin, Direction destination)
       kprintf("E2W car exited\n");
 			if (E2W == 0) {
         kprintf("Broadcast E2W exited!\n");
-	      cv_broadcast(cvDestinationWest,intersectionLock);
+	      // cv_broadcast(cvDestinationWest,intersectionLock);
 			}
     } else if (destination == south) {
       E2S = E2S - 1;
       kprintf("E2S car exited\n");
 			if (E2S == 0) {
         kprintf("Broadcast E2S exited!\n");
-	      cv_broadcast(cvDestinationSouth,intersectionLock);
+	      // cv_broadcast(cvDestinationSouth,intersectionLock);
 			}
     } else if (destination == north) {
       E2N = E2N - 1;
       kprintf("E2N car exited\n");
 			if (E2N == 0) {
         kprintf("Broadcast E2N exited!\n");
-	      cv_broadcast(cvDestinationNorth,intersectionLock);
+	      // cv_broadcast(cvDestinationNorth,intersectionLock);
 			}
     }
   } else if (origin == south) {
@@ -375,21 +375,21 @@ intersection_after_exit(Direction origin, Direction destination)
       kprintf("S2N car exited\n");
 			if (S2N == 0) {
         kprintf("Broadcast S2N exited!\n");
-	      cv_broadcast(cvDestinationNorth,intersectionLock);
+	      // cv_broadcast(cvDestinationNorth,intersectionLock);
 			}
     } else if (destination == east) {
       S2E = S2E - 1;
       kprintf("S2E car exited\n");
 			if (S2E == 0) {
         kprintf("Broadcast S2E exited!\n");
-	      cv_broadcast(cvDestinationEast,intersectionLock);
+	      // cv_broadcast(cvDestinationEast,intersectionLock);
 			}
     } else if (destination == west) {
       S2W = S2W - 1;
       kprintf("S2W car exited\n");
 			if (S2W == 0) {
         kprintf("Broadcast S2W exited!\n");
-	      cv_broadcast(cvDestinationWest,intersectionLock);
+	      // cv_broadcast(cvDestinationWest,intersectionLock);
 			}
     }
   } else if (origin == west) {
@@ -398,23 +398,27 @@ intersection_after_exit(Direction origin, Direction destination)
       kprintf("W2E car exited\n");
 			if (W2E == 0) {
         kprintf("Broadcast W2E exited!\n");
-	      cv_broadcast(cvDestinationEast,intersectionLock);
+	      // cv_broadcast(cvDestinationEast,intersectionLock);
 			}
     } else if (destination == south) {
       W2S = W2S - 1;
       kprintf("W2S car exited\n");
 			if (W2S == 0) {
         kprintf("Broadcast W2S exited!\n");
-	      cv_broadcast(cvDestinationSouth,intersectionLock);
+	      // cv_broadcast(cvDestinationSouth,intersectionLock);
 			}
     } else if (destination == north) {
       W2N = W2N - 1;
       kprintf("W2N car exited\n");
 			if (W2N == 0) {
         kprintf("Broadcast W2N exited!\n");
-	      cv_broadcast(cvDestinationNorth,intersectionLock);
+	      // cv_broadcast(cvDestinationNorth,intersectionLock);
 			}
     }
   }
+  cv_broadcast(cvDestinationNorth,intersectionLock);
+  cv_broadcast(cvDestinationEast,intersectionLock);
+  cv_broadcast(cvDestinationSouth,intersectionLock);
+  cv_broadcast(cvDestinationWest,intersectionLock);
   lock_release(intersectionLock);
 }
