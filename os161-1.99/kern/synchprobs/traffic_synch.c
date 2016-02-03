@@ -285,6 +285,8 @@ intersection_before_entry(Direction origin, Direction destination)
 void
 intersection_after_exit(Direction origin, Direction destination)
 {
+  KASSERT(intersectionLock != NULL);
+  lock_acquire(intersectionLock);
   if (origin == north) {
     if (destination == south) {
       N2S = false;
@@ -330,4 +332,5 @@ intersection_after_exit(Direction origin, Direction destination)
       cv_signal(cvDestinationNorth,intersectionLock);
     }
   }
+  lock_release(intersectionLock);
 }
