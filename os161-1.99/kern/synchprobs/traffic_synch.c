@@ -166,7 +166,7 @@ intersection_before_entry(Direction origin, Direction destination)
     if (destination == south) {
       if (!N2S) {
         KASSERT(cvDestinationSouth != NULL);
-        while (blockedNW() && blockedSW()) {
+        while (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
         N2S = true;
@@ -174,7 +174,7 @@ intersection_before_entry(Direction origin, Direction destination)
     } else if (destination == east) {
       if (!N2E) {
         KASSERT(cvDestinationEast != NULL);
-        while (blockedNW() && blockedSW() && blockedSE()) {
+        while (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
         N2E = true;
@@ -192,7 +192,7 @@ intersection_before_entry(Direction origin, Direction destination)
     if (destination == west) {
       if (!E2W) {
         KASSERT(cvDestinationWest != NULL);
-        while (blockedNE() && blockedNW()) {
+        while (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
         E2W = true;
@@ -200,7 +200,7 @@ intersection_before_entry(Direction origin, Direction destination)
     } else if (destination == south) {
       if (!E2S) {
         KASSERT(cvDestinationSouth != NULL);
-        while (blockedNE() && blockedNW() && blockedSW()) {
+        while (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
         E2S = true;
@@ -218,7 +218,7 @@ intersection_before_entry(Direction origin, Direction destination)
     if (destination == north) {
       if (!S2N) {
         KASSERT(cvDestinationNorth != NULL);
-        while (blockedSE() && blockedNE()) {
+        while (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
         S2N = true;
@@ -234,7 +234,7 @@ intersection_before_entry(Direction origin, Direction destination)
     } else if (destination == west) {
       if (!S2W) {
         KASSERT(cvDestinationWest != NULL);
-        while (blockedSE() && blockedNE() && blockedNW()) {
+        while (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
         S2W = true;
@@ -244,7 +244,7 @@ intersection_before_entry(Direction origin, Direction destination)
     if (destination == east) {
       if (!W2E) {
         KASSERT(cvDestinationEast != NULL);
-        while (blockedSW() && blockedSE()) {
+        while (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
         W2E = true;
@@ -260,7 +260,7 @@ intersection_before_entry(Direction origin, Direction destination)
     } else if (destination == north) {
       if (!W2N) {
         KASSERT(cvDestinationNorth != NULL);
-        while (blockedSW() && blockedSE() && blockedNE()) {
+        while (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
         W2N = true;
