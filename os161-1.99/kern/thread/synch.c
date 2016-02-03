@@ -279,8 +279,7 @@ cv_wait(struct cv *cv, struct lock *lock)
 {
   // KASSERT(lock != NULL);
   // KASSERT(cv != NULL);
-  bool check = lock_do_i_hold(lock)
-  KASSERT(check == true);
+  KASSERT(lock_do_i_hold(lock));
   wchan_lock(cv->cv_wchan);
   lock_release(lock);
   wchan_sleep(cv->cv_wchan);
@@ -292,8 +291,7 @@ cv_signal(struct cv *cv, struct lock *lock)
 {
   // KASSERT(lock != NULL);
   // KASSERT(cv != NULL);
-  bool check = lock_do_i_hold(lock)
-  KASSERT(check == true);
+  KASSERT(lock_do_i_hold(lock));
   wchan_wakeone(cv->cv_wchan);
 }
 
@@ -302,7 +300,6 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 {
   // KASSERT(lock != NULL);
   // KASSERT(cv != NULL);
-  bool check = lock_do_i_hold(lock)
-  KASSERT(check == true);
+  KASSERT(lock_do_i_hold(lock));
   wchan_wakeall(cv->cv_wchan);
 }
