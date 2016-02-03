@@ -119,107 +119,159 @@ intersection_before_entry(Direction origin, Direction destination)
   KASSERT(intersectionLock != NULL);
   lock_acquire(intersectionLock);
   if (origin == north) {
+    int otherCarsN = E2S + E2W + E2N + S2W + S2N + S2E + W2N + W2E + W2S;
     if (destination == south) {
-      if (N2S == 0) {
+      // if (N2S == 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedNW() || blockedSW()) {
-          cv_wait(cvDestinationSouth,intersectionLock);
+          if (otherCarsN == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationSouth,intersectionLock);
+          }
         }
-      }
+      // }
       N2S = N2S + 1;
     } else if (destination == east) {
-      if (N2E == 0) {
+      // if (N2E == 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedNW() || blockedSW() || blockedSE()) {
-          cv_wait(cvDestinationEast,intersectionLock);
+          if (otherCarsN == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationEast,intersectionLock);
+          }
         }
-      }
+      // }
       N2E = N2E + 1;
     } else if (destination == west) {
-      if (N2W == 0) {
+      // if (N2W == 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedNW()) {
-          cv_wait(cvDestinationWest,intersectionLock);
+          if (otherCarsN == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationWest,intersectionLock);
+          }
         }
-      }
+      // }
       N2W = N2W + 1;
     }
   } else if (origin == east) {
+    int otherCarsE = N2E + N2S + N2W + S2W + S2N + S2E + W2N + W2E + W2S;
     if (destination == west) {
-      if (E2W == 0) {
+      // if (E2W == 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedNE() || blockedNW()) {
-          cv_wait(cvDestinationWest,intersectionLock);
+          if (otherCarsE == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationWest,intersectionLock);
+          }
         }
-      }
+      // }
       E2W = E2W + 1;
     } else if (destination == south) {
-      if (E2S == 0) {
+      // if (E2S == 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedNE() || blockedNW() || blockedSW()) {
-          cv_wait(cvDestinationWest,intersectionLock);
+          if (otherCarsE == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationSouth,intersectionLock);
+          }
         }
-      }
+      // }
       E2S = E2S + 1;
     } else if (destination == north) {
-      if (E2N == 0) {
+      // if (E2N == 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedNE()) {
-          cv_wait(cvDestinationNorth,intersectionLock);
+          if (otherCarsE == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationNorth,intersectionLock);
+          }
         }
-      }
+      // }
       E2N = E2N + 1;
     }
   } else if (origin == south) {
+    int otherCarsS = E2S + E2W + E2N + N2E + N2S + N2W + W2N + W2E + W2S;
     if (destination == north) {
-      if (S2N == 0) {
+      // if (S2N == 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedSE() || blockedNE()) {
-          cv_wait(cvDestinationNorth,intersectionLock);
+          if (otherCarsS == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationNorth,intersectionLock);
+          }
         }
-      }
+      // }
       S2N = S2N + 1;
     } else if (destination == east) {
-      if (S2E == 0) {
+      // if (S2E == 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedSE()) {
-          cv_wait(cvDestinationEast,intersectionLock);
+          if (otherCarsS == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationEast,intersectionLock);
+          }
         }
-      }
+      // }
       S2E = S2E + 1;
     } else if (destination == west) {
-      if (S2W == 0) {
+      // if (S2W == 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedSE() || blockedNE() || blockedNW()) {
-          cv_wait(cvDestinationWest,intersectionLock);
+          if (otherCarsS == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationWest,intersectionLock);
+          }
         }
-      }
+      // }
       S2W = S2W + 1;
     }
   } else if (origin == west) {
+    int otherCarsW = E2S + E2W + E2N + S2W + S2N + S2E + N2E + N2S + N2W;
     if (destination == east) {
-      if (W2E == 0) {
+      // if (W2E == 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedSW() || blockedSE()) {
-          cv_wait(cvDestinationEast,intersectionLock);
+          if (otherCarsW == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationEast,intersectionLock);
+          }
         }
-      }
+      // }
       W2E = W2E + 1;
     } else if (destination == south) {
-      if (W2S == 0) {
+      // if (W2S == 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedSW()) {
-          cv_wait(cvDestinationSouth,intersectionLock);
+          if (otherCarsW == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationSouth,intersectionLock);
+          }
         }
-      }
+      // }
       W2S = W2S + 1;
     } else if (destination == north) {
-      if (W2N == 0) {
+      // if (W2N == 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedSW() || blockedSE() || blockedNE()) {
-          cv_wait(cvDestinationNorth,intersectionLock);
+          if (otherCarsW == 0) {
+            break;
+          } else {
+            cv_wait(cvDestinationNorth,intersectionLock);
+          }
         }
-      }
+      // }
       W2N = W2N + 1;
     }
   }
