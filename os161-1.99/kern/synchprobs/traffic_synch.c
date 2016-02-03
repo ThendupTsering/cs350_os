@@ -4,23 +4,6 @@
 #include <synch.h>
 #include <opt-A1.h>
 
-/*
-* This simple default synchronization mechanism allows only vehicle at a time
-* into the intersection.   The intersectionSem is used as a a lock.
-* We use a semaphore rather than a lock so that this code will work even
-* before locks are implemented.
-*/
-
-/*
-* Replace this default synchronization mechanism with your own (better) mechanism
-* needed for your solution.   Your mechanism may use any of the available synchronzation
-* primitives, e.g., semaphores, locks, condition variables.   You are also free to
-* declare other global variables if your solution requires them.
-*/
-
-/*
-* replace this with declarations of any synchronization and other variables you need here
-*/
 static struct lock *intersectionLock;
 static struct cv *cvDestinationNorth;
 static struct cv *cvDestinationSouth;
@@ -38,14 +21,6 @@ static bool blockedSW(void);
 static bool blockedSE(void);
 
 
-
-/*
-* The simulation driver will call this function once before starting
-* the simulation
-*
-* You can use it to initialize synchronization and other variables.
-*
-*/
 void
 intersection_sync_init(void)
 {
@@ -85,13 +60,7 @@ intersection_sync_init(void)
   return;
 }
 
-/*
-* The simulation driver will call this function once after
-* the simulation has finished
-*
-* You can use it to clean up any synchronization and other variables.
-*
-*/
+
 void
 intersection_sync_cleanup(void)
 {
@@ -144,19 +113,6 @@ blockedSW(void)
 }
 
 
-/*
-* The simulation driver will call this function each time a vehicle
-* tries to enter the intersection, before it enters.
-* This function should cause the calling simulation thread
-* to block until it is OK for the vehicle to enter the intersection.
-*
-* parameters:
-*    * origin: the Direction from which the vehicle is arriving
-*    * destination: the Direction in which the vehicle is trying to go
-*
-* return value: none
-*/
-
 void
 intersection_before_entry(Direction origin, Direction destination)
 {
@@ -164,8 +120,7 @@ intersection_before_entry(Direction origin, Direction destination)
   lock_acquire(intersectionLock);
   if (origin == north) {
     if (destination == south) {
-      // Straight
-      if (N2S == 0) {
+      if ((N2S + N2E + N2W) == 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
@@ -173,8 +128,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       N2S = N2S + 1;
     } else if (destination == east) {
-      // Left
-      if (N2E == 0) {
+      if ((N2S + N2E + N2W) == 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
@@ -182,8 +136,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       N2E = N2E + 1;
     } else if (destination == west) {
-      // Right
-      if (N2W == 0) {
+      if ((N2S + N2E + N2W) == 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
@@ -193,8 +146,7 @@ intersection_before_entry(Direction origin, Direction destination)
     }
   } else if (origin == east) {
     if (destination == west) {
-      // Straight
-      if (E2W == 0) {
+      if ((E2W + E2S + E2N) == 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
@@ -202,8 +154,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       E2W = E2W + 1;
     } else if (destination == south) {
-      // Left
-      if (E2S == 0) {
+      if ((E2W + E2S + E2N) == 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
@@ -211,8 +162,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       E2S = E2S + 1;
     } else if (destination == north) {
-      // Right
-      if (E2N == 0) {
+      if ((E2W + E2S + E2N) == 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
@@ -222,8 +172,7 @@ intersection_before_entry(Direction origin, Direction destination)
     }
   } else if (origin == south) {
     if (destination == north) {
-      // Straight
-      if (S2N == 0) {
+      if ((S2N + S2E + S2W) == 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
@@ -231,8 +180,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       S2N = S2N + 1;
     } else if (destination == east) {
-      // Right
-      if (S2E == 0) {
+      if ((S2N + S2E + S2W) == 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
@@ -240,8 +188,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       S2E = S2E + 1;
     } else if (destination == west) {
-      // Left
-      if (S2W == 0) {
+      if ((S2N + S2E + S2W) == 0) {
         KASSERT(cvDestinationWest != NULL);
         while (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
@@ -251,8 +198,7 @@ intersection_before_entry(Direction origin, Direction destination)
     }
   } else if (origin == west) {
     if (destination == east) {
-      // Straight
-      if (W2E == 0) {
+      if ((W2E + W2S + W2N) == 0) {
         KASSERT(cvDestinationEast != NULL);
         while (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
@@ -260,8 +206,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       W2E = W2E + 1;
     } else if (destination == south) {
-      // Right
-      if (W2S == 0) {
+      if ((W2E + W2S + W2N) == 0) {
         KASSERT(cvDestinationSouth != NULL);
         while (blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
@@ -269,8 +214,7 @@ intersection_before_entry(Direction origin, Direction destination)
       }
       W2S = W2S + 1;
     } else if (destination == north) {
-      // Left
-      if (W2N == 0) {
+      if ((W2E + W2S + W2N) == 0) {
         KASSERT(cvDestinationNorth != NULL);
         while (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
@@ -282,17 +226,6 @@ intersection_before_entry(Direction origin, Direction destination)
   lock_release(intersectionLock);
 }
 
-
-/*
-* The simulation driver will call this function each time a vehicle
-* leaves the intersection.
-*
-* parameters:
-*    * origin: the Direction from which the vehicle arrived
-*    * destination: the Direction in which the vehicle is going
-*
-* return value: none
-*/
 
 void
 intersection_after_exit(Direction origin, Direction destination)
