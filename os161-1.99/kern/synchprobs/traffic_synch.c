@@ -5,22 +5,22 @@
 #include <opt-A1.h>
 
 /*
- * This simple default synchronization mechanism allows only vehicle at a time
- * into the intersection.   The intersectionSem is used as a a lock.
- * We use a semaphore rather than a lock so that this code will work even
- * before locks are implemented.
- */
+* This simple default synchronization mechanism allows only vehicle at a time
+* into the intersection.   The intersectionSem is used as a a lock.
+* We use a semaphore rather than a lock so that this code will work even
+* before locks are implemented.
+*/
 
 /*
- * Replace this default synchronization mechanism with your own (better) mechanism
- * needed for your solution.   Your mechanism may use any of the available synchronzation
- * primitives, e.g., semaphores, locks, condition variables.   You are also free to
- * declare other global variables if your solution requires them.
- */
+* Replace this default synchronization mechanism with your own (better) mechanism
+* needed for your solution.   Your mechanism may use any of the available synchronzation
+* primitives, e.g., semaphores, locks, condition variables.   You are also free to
+* declare other global variables if your solution requires them.
+*/
 
 /*
- * replace this with declarations of any synchronization and other variables you need here
- */
+* replace this with declarations of any synchronization and other variables you need here
+*/
 static struct lock *intersectionLock;
 static struct cv *cvDestinationNorth;
 static struct cv *cvDestinationSouth;
@@ -40,12 +40,12 @@ static bool blockedSE(void);
 
 
 /*
- * The simulation driver will call this function once before starting
- * the simulation
- *
- * You can use it to initialize synchronization and other variables.
- *
- */
+* The simulation driver will call this function once before starting
+* the simulation
+*
+* You can use it to initialize synchronization and other variables.
+*
+*/
 void
 intersection_sync_init(void)
 {
@@ -86,12 +86,12 @@ intersection_sync_init(void)
 }
 
 /*
- * The simulation driver will call this function once after
- * the simulation has finished
- *
- * You can use it to clean up any synchronization and other variables.
- *
- */
+* The simulation driver will call this function once after
+* the simulation has finished
+*
+* You can use it to clean up any synchronization and other variables.
+*
+*/
 void
 intersection_sync_cleanup(void)
 {
@@ -108,12 +108,12 @@ intersection_sync_cleanup(void)
 }
 
 /*
-  Intersection will be split into 4 quadrants:
-  * * * * * *
-  * NW * NE *
-  * * * * * *
-  * SW * SE *
-  * * * * * *
+Intersection will be split into 4 quadrants:
+* * * * * *
+* NW * NE *
+* * * * * *
+* SW * SE *
+* * * * * *
 */
 bool
 blockedNW(void)
@@ -145,17 +145,17 @@ blockedSW(void)
 
 
 /*
- * The simulation driver will call this function each time a vehicle
- * tries to enter the intersection, before it enters.
- * This function should cause the calling simulation thread
- * to block until it is OK for the vehicle to enter the intersection.
- *
- * parameters:
- *    * origin: the Direction from which the vehicle is arriving
- *    * destination: the Direction in which the vehicle is trying to go
- *
- * return value: none
- */
+* The simulation driver will call this function each time a vehicle
+* tries to enter the intersection, before it enters.
+* This function should cause the calling simulation thread
+* to block until it is OK for the vehicle to enter the intersection.
+*
+* parameters:
+*    * origin: the Direction from which the vehicle is arriving
+*    * destination: the Direction in which the vehicle is trying to go
+*
+* return value: none
+*/
 
 void
 intersection_before_entry(Direction origin, Direction destination)
@@ -163,143 +163,123 @@ intersection_before_entry(Direction origin, Direction destination)
   KASSERT(intersectionLock != NULL);
   lock_acquire(intersectionLock);
   if (origin == north) {
+    bool northOriginOccupied = ((N2E > 0) || (N2S > 0) || (N2W > 0));
     if (destination == south) {
       // Straight
-      // if (N2S > 0) {
+      if (!northOriginOccupied) {
         KASSERT(cvDestinationSouth != NULL);
-        kprintf("N2S\nNo. of cars: %d\n", N2S);
         while (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
-        kprintf("N2S Entered Intersection\n");
-      // }
+      }
       N2S = N2S + 1;
     } else if (destination == east) {
       // Left
-      // if (N2E > 0) {
+      if (!northOriginOccupied) {
         KASSERT(cvDestinationEast != NULL);
-        kprintf("N2E\nNo. of cars: %d\n", N2E);
         while (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
-        kprintf("N2E Entered Intersection\n");
-      // }
+      }
       N2E = N2E + 1;
     } else if (destination == west) {
       // Right
-      // if (N2W > 0) {
+      if (!northOriginOccupied) {
         KASSERT(cvDestinationWest != NULL);
-        kprintf("N2W\nNo. of cars: %d\n", N2W);
         while (blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-        kprintf("N2W Entered Intersection\n");
-      // }
+      }
       N2W = N2W + 1;
     }
   } else if (origin == east) {
+    bool eastOriginOccupied = ((E2S > 0) || (E2W > 0) || (E2N > 0));
     if (destination == west) {
       // Straight
-      // if (E2W > 0) {
+      if (!eastOriginOccupied) {
         KASSERT(cvDestinationWest != NULL);
-        kprintf("E2W\nNo. of cars: %d\n", E2W);
         while (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-        kprintf("E2W Entered Intersection\n");
-      // }
+      }
       E2W = E2W + 1;
     } else if (destination == south) {
       // Left
-      // if (E2S > 0) {
+      if (!eastOriginOccupied) {
         KASSERT(cvDestinationSouth != NULL);
-        kprintf("E2S\nNo. of cars: %d\n", E2S);
         while (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-        kprintf("E2S Entered Intersection\n");
-      // }
+      }
       E2S = E2S + 1;
     } else if (destination == north) {
       // Right
-      // if (E2N > 0) {
+      if (!eastOriginOccupied) {
         KASSERT(cvDestinationNorth != NULL);
-        kprintf("E2N\nNo. of cars: %d\n", E2N);
         while (blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
-        kprintf("E2N Entered Intersection\n");
-      // }
+      }
       E2N = E2N + 1;
     }
   } else if (origin == south) {
+    bool southOriginOccupied = ((S2W > 0) || (S2N > 0) || (S2E > 0));
     if (destination == north) {
       // Straight
-      // if (S2N > 0) {
+      if (!southOriginOccupied) {
         KASSERT(cvDestinationNorth != NULL);
-        kprintf("S2N\nNo. of cars: %d\n", S2N);
         while (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
-        kprintf("S2N Entered Intersection\n");
-      // }
+      }
       S2N = S2N + 1;
     } else if (destination == east) {
       // Right
-      // if (S2E > 0) {
+      if (!southOriginOccupied) {
         KASSERT(cvDestinationEast != NULL);
-        kprintf("S2E\nNo. of cars: %d\n", S2E);
         while (blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
-        kprintf("S2E Entered Intersection\n");
-      // }
+      }
       S2E = S2E + 1;
     } else if (destination == west) {
       // Left
-      // if (S2W > 0) {
+      if (!southOriginOccupied) {
         KASSERT(cvDestinationWest != NULL);
-        kprintf("S2W\nNo. of cars: %d\n", S2W);
         while (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
-        kprintf("S2W Entered Intersection\n");
-      // }
+      }
       S2W = S2W + 1;
     }
   } else if (origin == west) {
+    bool westOriginOccupied = ((W2N > 0) || (W2E > 0) || (W2S > 0));
     if (destination == east) {
       // Straight
-      // if (W2E > 0) {
+      if (!westOriginOccupied) {
         KASSERT(cvDestinationEast != NULL);
-        kprintf("W2E\nNo. of cars: %d\n", W2E);
         while (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
-        kprintf("W2E Entered Intersection\n");
-      // }
+      }
       W2E = W2E + 1;
     } else if (destination == south) {
       // Right
-      // if (W2S > 0) {
+      if (!westOriginOccupied) {
         KASSERT(cvDestinationSouth != NULL);
-        kprintf("W2S\nNo. of cars: %d\n", W2S);
         while (blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
-        kprintf("W2S Entered Intersection\n");
-      // }
+      }
       W2S = W2S + 1;
     } else if (destination == north) {
       // Left
-      // if (W2N > 0) {
+      if (!westOriginOccupied) {
         KASSERT(cvDestinationNorth != NULL);
-        kprintf("W2N\nNo. of cars: %d\n", W2N);
         while (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
-        kprintf("W2N Entered Intersection\n");
-      // }
+      }
       W2N = W2N + 1;
     }
   }
@@ -308,15 +288,15 @@ intersection_before_entry(Direction origin, Direction destination)
 
 
 /*
- * The simulation driver will call this function each time a vehicle
- * leaves the intersection.
- *
- * parameters:
- *    * origin: the Direction from which the vehicle arrived
- *    * destination: the Direction in which the vehicle is going
- *
- * return value: none
- */
+* The simulation driver will call this function each time a vehicle
+* leaves the intersection.
+*
+* parameters:
+*    * origin: the Direction from which the vehicle arrived
+*    * destination: the Direction in which the vehicle is going
+*
+* return value: none
+*/
 
 void
 intersection_after_exit(Direction origin, Direction destination)
@@ -326,94 +306,34 @@ intersection_after_exit(Direction origin, Direction destination)
   if (origin == north) {
     if (destination == south) {
       N2S = N2S - 1;
-      kprintf("N2S car exited\n");
-			if (N2S == 0) {
-        kprintf("Broadcast N2S exited!\n");
-	      // cv_broadcast(cvDestinationSouth,intersectionLock);
-			}
     } else if (destination == east) {
       N2E = N2E - 1;
-      kprintf("N2E car exited\n");
-			if (N2E == 0) {
-        kprintf("Broadcast N2E exited!\n");
-	      // cv_broadcast(cvDestinationEast,intersectionLock);
-			}
     } else if (destination == west) {
       N2W = N2W - 1;
-      kprintf("N2W car exited\n");
-			if (N2W == 0) {
-        kprintf("Broadcast N2W exited!\n");
-	      // cv_broadcast(cvDestinationWest,intersectionLock);
-			}
     }
   } else if (origin == east) {
     if (destination == west) {
       E2W = E2W - 1;
-      kprintf("E2W car exited\n");
-			if (E2W == 0) {
-        kprintf("Broadcast E2W exited!\n");
-	      // cv_broadcast(cvDestinationWest,intersectionLock);
-			}
     } else if (destination == south) {
       E2S = E2S - 1;
-      kprintf("E2S car exited\n");
-			if (E2S == 0) {
-        kprintf("Broadcast E2S exited!\n");
-	      // cv_broadcast(cvDestinationSouth,intersectionLock);
-			}
     } else if (destination == north) {
       E2N = E2N - 1;
-      kprintf("E2N car exited\n");
-			if (E2N == 0) {
-        kprintf("Broadcast E2N exited!\n");
-	      // cv_broadcast(cvDestinationNorth,intersectionLock);
-			}
     }
   } else if (origin == south) {
     if (destination == north) {
       S2N = S2N - 1;
-      kprintf("S2N car exited\n");
-			if (S2N == 0) {
-        kprintf("Broadcast S2N exited!\n");
-	      // cv_broadcast(cvDestinationNorth,intersectionLock);
-			}
     } else if (destination == east) {
       S2E = S2E - 1;
-      kprintf("S2E car exited\n");
-			if (S2E == 0) {
-        kprintf("Broadcast S2E exited!\n");
-	      // cv_broadcast(cvDestinationEast,intersectionLock);
-			}
     } else if (destination == west) {
       S2W = S2W - 1;
-      kprintf("S2W car exited\n");
-			if (S2W == 0) {
-        kprintf("Broadcast S2W exited!\n");
-	      // cv_broadcast(cvDestinationWest,intersectionLock);
-			}
     }
   } else if (origin == west) {
     if (destination == east) {
       W2E = W2E - 1;
-      kprintf("W2E car exited\n");
-			if (W2E == 0) {
-        kprintf("Broadcast W2E exited!\n");
-	      // cv_broadcast(cvDestinationEast,intersectionLock);
-			}
     } else if (destination == south) {
       W2S = W2S - 1;
-      kprintf("W2S car exited\n");
-			if (W2S == 0) {
-        kprintf("Broadcast W2S exited!\n");
-	      // cv_broadcast(cvDestinationSouth,intersectionLock);
-			}
     } else if (destination == north) {
       W2N = W2N - 1;
-      kprintf("W2N car exited\n");
-			if (W2N == 0) {
-        kprintf("Broadcast W2N exited!\n");
-	      // cv_broadcast(cvDestinationNorth,intersectionLock);
-			}
     }
   }
   cv_broadcast(cvDestinationNorth,intersectionLock);
