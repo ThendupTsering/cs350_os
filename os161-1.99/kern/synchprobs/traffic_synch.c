@@ -171,6 +171,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedNW() || blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
+        kprintf("N2S Entered Intersection\n");
       // }
       N2S = N2S + 1;
     } else if (destination == east) {
@@ -181,6 +182,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedNW() || blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
+        kprintf("N2E Entered Intersection\n");
       // }
       N2E = N2E + 1;
     } else if (destination == west) {
@@ -191,6 +193,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        kprintf("N2W Entered Intersection\n");
       // }
       N2W = N2W + 1;
     }
@@ -203,6 +206,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        kprintf("E2W Entered Intersection\n");
       // }
       E2W = E2W + 1;
     } else if (destination == south) {
@@ -213,6 +217,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedNE() || blockedNW() || blockedSW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        kprintf("E2S Entered Intersection\n");
       // }
       E2S = E2S + 1;
     } else if (destination == north) {
@@ -223,6 +228,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
+        kprintf("E2N Entered Intersection\n");
       // }
       E2N = E2N + 1;
     }
@@ -235,6 +241,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
+        kprintf("S2N Entered Intersection\n");
       // }
       S2N = S2N + 1;
     } else if (destination == east) {
@@ -245,6 +252,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
+        kprintf("S2E Entered Intersection\n");
       // }
       S2E = S2E + 1;
     } else if (destination == west) {
@@ -255,6 +263,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedSE() || blockedNE() || blockedNW()) {
           cv_wait(cvDestinationWest,intersectionLock);
         }
+        kprintf("S2W Entered Intersection\n");
       // }
       S2W = S2W + 1;
     }
@@ -267,6 +276,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedSW() || blockedSE()) {
           cv_wait(cvDestinationEast,intersectionLock);
         }
+        kprintf("W2E Entered Intersection\n");
       // }
       W2E = W2E + 1;
     } else if (destination == south) {
@@ -277,6 +287,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedSW()) {
           cv_wait(cvDestinationSouth,intersectionLock);
         }
+        kprintf("W2S Entered Intersection\n");
       // }
       W2S = W2S + 1;
     } else if (destination == north) {
@@ -287,6 +298,7 @@ intersection_before_entry(Direction origin, Direction destination)
         while (blockedSW() || blockedSE() || blockedNE()) {
           cv_wait(cvDestinationNorth,intersectionLock);
         }
+        kprintf("W2N Entered Intersection\n");
       // }
       W2N = W2N + 1;
     }
