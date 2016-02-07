@@ -14,6 +14,12 @@ static volatile int N2E, N2S, N2W;
 static volatile int E2S, E2W, E2N;
 static volatile int S2W, S2N, S2E;
 static volatile int W2N, W2E, W2S;
+// Helper Functions:
+static bool blockedNW(void);
+static bool blockedNE(void);
+static bool blockedSW(void);
+static bool blockedSE(void);
+
 
 void
 intersection_sync_init(void)
@@ -78,6 +84,34 @@ Intersection will be split into 4 quadrants:
 * SW * SE *
 * * * * * *
 */
+bool
+blockedNW(void)
+{
+  int ret = (N2W + N2S + N2E + E2W + E2S + S2W);
+  return (ret > 0);
+}
+
+bool
+blockedNE(void)
+{
+  int ret = (E2N + E2W + E2S + S2N + S2W + W2N);
+  return (ret > 0);
+}
+
+bool
+blockedSE(void)
+{
+  int ret = (S2E + S2N + S2W + W2E + W2N + N2E);
+  return (ret > 0);
+}
+
+bool
+blockedSW(void)
+{
+  int ret = (W2S + W2E + W2N + N2S + N2E + E2S);
+  return (ret > 0);
+}
+
 
 void
 intersection_before_entry(Direction origin, Direction destination)
@@ -85,94 +119,106 @@ intersection_before_entry(Direction origin, Direction destination)
   KASSERT(intersectionLock != NULL);
   lock_acquire(intersectionLock);
   if (origin == north) {
-    int otherCarsN = E2S + E2W + S2W + W2N + W2E + W2S;
-    int otherCarsN2 = E2S + E2W + S2W + S2N + S2E + W2N + W2E + W2S;
-    int otherCarsN3 = E2S + E2W + S2W;
     if (destination == south) {
-      KASSERT(cvDestinationSouth != NULL);
-      while (otherCarsN != 0) {
-        cv_wait(cvDestinationSouth,intersectionLock);
+      if (N2S == 0) {
+        KASSERT(cvDestinationSouth != NULL);
+        while (blockedNW() || blockedSW()) {
+          cv_wait(cvDestinationSouth,intersectionLock);
+        }
       }
       N2S = N2S + 1;
     } else if (destination == east) {
-      KASSERT(cvDestinationEast != NULL);
-      while (otherCarsN2 != 0) {
-        cv_wait(cvDestinationEast,intersectionLock);
+      if (N2E == 0) {
+        KASSERT(cvDestinationEast != NULL);
+        while (blockedNW() || blockedSW() || blockedSE()) {
+          cv_wait(cvDestinationEast,intersectionLock);
+        }
       }
       N2E = N2E + 1;
     } else if (destination == west) {
-      KASSERT(cvDestinationWest != NULL);
-      while (otherCarsN3 != 0) {
-        cv_wait(cvDestinationWest,intersectionLock);
+      if (N2W == 0) {
+        KASSERT(cvDestinationWest != NULL);
+        while (blockedNW()) {
+          cv_wait(cvDestinationWest,intersectionLock);
+        }
       }
       N2W = N2W + 1;
     }
   } else if (origin == east) {
-    int otherCarsE = N2E + N2S + N2W + S2W + S2N + W2N;
-    int otherCarsE2 = N2E + N2S + N2W + S2W + S2N + W2N + W2E + W2S;
-    int otherCarsE3 = S2W + S2N + W2N;
     if (destination == west) {
-      KASSERT(cvDestinationWest != NULL);
-      while (otherCarsE != 0) {
-        cv_wait(cvDestinationWest,intersectionLock);
+      if (E2W == 0) {
+        KASSERT(cvDestinationWest != NULL);
+        while (blockedNE() || blockedNW()) {
+          cv_wait(cvDestinationWest,intersectionLock);
+        }
       }
       E2W = E2W + 1;
     } else if (destination == south) {
-      KASSERT(cvDestinationSouth != NULL);
-      while (otherCarsE2 != 0) {
-        cv_wait(cvDestinationSouth,intersectionLock);
+      if (E2S == 0) {
+        KASSERT(cvDestinationSouth != NULL);
+        while (blockedNE() || blockedNW() || blockedSW()) {
+          cv_wait(cvDestinationWest,intersectionLock);
+        }
       }
       E2S = E2S + 1;
     } else if (destination == north) {
-      KASSERT(cvDestinationNorth != NULL);
-      while (otherCarsE3 != 0) {
-        cv_wait(cvDestinationNorth,intersectionLock);
+      if (E2N == 0) {
+        KASSERT(cvDestinationNorth != NULL);
+        while (blockedNE()) {
+          cv_wait(cvDestinationNorth,intersectionLock);
+        }
       }
       E2N = E2N + 1;
     }
   } else if (origin == south) {
-    int otherCarsS = E2S + E2W + E2N + N2E + W2N + W2E;
-    int otherCarsS2 = N2E + W2N + W2E;
-    int otherCarsS3 = E2S + E2W + E2N + N2E + N2S + N2W + W2N + W2E;
     if (destination == north) {
-      KASSERT(cvDestinationNorth != NULL);
-      while (otherCarsS != 0) {
-        cv_wait(cvDestinationNorth,intersectionLock);
+      if (S2N == 0) {
+        KASSERT(cvDestinationNorth != NULL);
+        while (blockedSE() || blockedNE()) {
+          cv_wait(cvDestinationNorth,intersectionLock);
+        }
       }
       S2N = S2N + 1;
     } else if (destination == east) {
-      KASSERT(cvDestinationEast != NULL);
-      while (otherCarsS2 != 0) {
-        cv_wait(cvDestinationEast,intersectionLock);
+      if (S2E == 0) {
+        KASSERT(cvDestinationEast != NULL);
+        while (blockedSE()) {
+          cv_wait(cvDestinationEast,intersectionLock);
+        }
       }
       S2E = S2E + 1;
     } else if (destination == west) {
-      KASSERT(cvDestinationWest != NULL);
-      while (otherCarsS3 != 0) {
-        cv_wait(cvDestinationWest,intersectionLock);
+      if (S2W == 0) {
+        KASSERT(cvDestinationWest != NULL);
+        while (blockedSE() || blockedNE() || blockedNW()) {
+          cv_wait(cvDestinationWest,intersectionLock);
+        }
       }
       S2W = S2W + 1;
     }
   } else if (origin == west) {
-    int otherCarsW = E2S + S2W + S2N + S2E + N2E + N2S;
-    int otherCarsW2 = E2S + N2E + N2S;
-    int otherCarsW3 = E2S + E2W + E2N + S2W + S2N + S2E + N2E + N2S;
     if (destination == east) {
-      KASSERT(cvDestinationEast != NULL);
-      while (otherCarsW != 0) {
-        cv_wait(cvDestinationEast,intersectionLock);
+      if (W2E == 0) {
+        KASSERT(cvDestinationEast != NULL);
+        while (blockedSW() || blockedSE()) {
+          cv_wait(cvDestinationEast,intersectionLock);
+        }
       }
       W2E = W2E + 1;
     } else if (destination == south) {
-      KASSERT(cvDestinationSouth != NULL);
-      while (otherCarsW2 != 0) {
-        cv_wait(cvDestinationSouth,intersectionLock);
+      if (W2S == 0) {
+        KASSERT(cvDestinationSouth != NULL);
+        while (blockedSW()) {
+          cv_wait(cvDestinationSouth,intersectionLock);
+        }
       }
       W2S = W2S + 1;
     } else if (destination == north) {
-      KASSERT(cvDestinationNorth != NULL);
-      while (otherCarsW3 != 0) {
-        cv_wait(cvDestinationNorth,intersectionLock);
+      if (W2N == 0) {
+        KASSERT(cvDestinationNorth != NULL);
+        while (blockedSW() || blockedSE() || blockedNE()) {
+          cv_wait(cvDestinationNorth,intersectionLock);
+        }
       }
       W2N = W2N + 1;
     }
