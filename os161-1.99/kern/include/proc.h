@@ -35,6 +35,21 @@
  *
  * Note: curproc is defined by <current.h>.
  */
+#include "opt-A2.h"
+
+#if OPT_A2
+#include <array.h>
+/*
+ * The processArray definition follows from Piazza post
+ */
+#ifndef PROCINLINE
+#define PROCINLINE INLINE
+#endif
+
+DECLARRAY_BYTYPE(processArray, struct proc);
+DEFARRAY_BYTYPE(processArray, struct proc, PROCINLINE);
+
+#endif
 
 #include <spinlock.h>
 #include <thread.h> /* required for struct threadarray */
@@ -68,8 +83,20 @@ struct proc {
   struct vnode *console;                /* a vnode for the console device */
 #endif
 
-	/* add more material here as needed */
+#if OPT_A2
+	pid_t p_pid;
+	int p_exit_status;
+	struct proc *p_parent;
+	struct array *p_children;
+	bool p_canExit;
+	struct lock *p_lock_wait;
+ 	struct cv *p_cv_wait;
+#endif
 };
+
+#if OPT_A2
+	struct proc* getProc(int pid);
+#endif
 
 /* This is the process structure for the kernel and for kernel-only threads. */
 extern struct proc *kproc;
