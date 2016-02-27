@@ -187,12 +187,14 @@ void enter_forked_process(void *d1, unsigned long d2) {
 
 	struct trapframe *fork_child_trapframe = ((void *)d1);
 
-	fork_child_trapframe->tf_v0 = 0;
-	fork_child_trapframe->tf_a3 = 0;
+	struct trapframe local_frk_child_tf = *fork_child_trapframe;
 
-	fork_child_trapframe->tf_epc += 4;
+	local_frk_child_tf.tf_v0 = 0;
+	local_frk_child_tf.tf_a3 = 0;
 
-	mips_usermode(fork_child_trapframe);
+	local_frk_child_tf.tf_epc += 4;
+
+	mips_usermode(&local_frk_child_tf);
 }
 
 #else

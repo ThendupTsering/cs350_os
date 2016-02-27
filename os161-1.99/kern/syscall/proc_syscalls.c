@@ -18,21 +18,30 @@
   /* this implementation of sys__exit does not do anything with the exit code */
   /* this needs to be fixed to get exit() and waitpid() working properly */
 
+
+#if OPT_A2
+  struct proc *findChild(struct proc *curProc, int pid) {
+  	int length = array_num(curProc->p_children);
+  	struct proc *child = NULL;
+  	for (int i = 0; i < length; i++) {
+  		child = array_get(curProc->p_children, i);
+  		if (child->p_pid == pid) {
+  			return child;
+  		} else {
+  			child = NULL;
+  		}
+  	}
+  	return child;
+  }
+#endif
+
 void sys__exit(int exitcode) {
 
   struct addrspace *as;
   struct proc *p = curproc;
-  #if OPT_A2
-  curproc->p_exit_status = _MKWAIT_EXIT(exitcode);
-  curproc->p_canExit = true;
-  lock_acquire(curproc->p_lock_wait);
-  cv_broadcast(curproc->p_cv_wait, curproc->p_lock_wait);
-  lock_release(curproc->p_lock_wait);
-  #else
   /* for now, just include this to keep the compiler from complaining about
      an unused variable */
-  (void)exitcode;
-  #endif
+  // (void)exitcode;
 
   DEBUG(DB_SYSCALL,"Syscall: _exit(%d)\n",exitcode);
 
@@ -52,9 +61,21 @@ void sys__exit(int exitcode) {
   /* note: curproc cannot be used after this call */
   proc_remthread(curthread);
 
+  #if OPT_A2
+  p->p_exit_status = _MKWAIT_EXIT(exitcode);
+  p->p_canExit = true;
+  DEBUG(DB_SYSCALL,"_exit 1\n");
+  lock_acquire(p->p_lock_wait);
+  cv_broadcast(p->p_cv_wait, p->p_lock_wait);
+  lock_release(p->p_lock_wait);
+  DEBUG(DB_SYSCALL,"_exit 2\n");
+  #endif
+
   /* if this is the last user process in the system, proc_destroy()
      will wake up the kernel menu thread */
+  DEBUG(DB_SYSCALL,"_exit 3\n");
   proc_destroy(p);
+  DEBUG(DB_SYSCALL,"_exit 4\n");
 
   thread_exit();
   /* thread_exit() does not return, so we should never get here */
@@ -89,8 +110,8 @@ sys_waitpid(pid_t pid,
 
 #if OPT_A2
   bool isCallerRelated = false;
-  struct proc *caller_proc = getProc(pid);
-  if (caller_proc->p_parent == curproc) {
+  struct proc *caller_proc = findChild(curproc, pid);
+  if (caller_proc != NULL) {
     isCallerRelated = true;
   } else {
     kprintf ("Current proc: %d is not parent of %d\n", curproc->p_pid, pid);
@@ -134,18 +155,18 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
 
   // Create Proc for Child Process
 	struct proc *fork_child = proc_create_runprogram("fork_child_proc");
-  kprintf("Fork child Pid: %d\n", fork_child->p_pid);
+  DEBUG(DB_SYSCALL,"Fork child PID: %d\n", fork_child->p_pid);
   KASSERT (fork_child->p_pid > 0);
 	if (fork_child == NULL)	{ // proc_create_runprogram returned NULL
     return ENOMEM;
 	}
-  kprintf("sys_fork 2\n");
+  DEBUG(DB_SYSCALL,"sys_fork 2\n");
 
   // Create and Copy Addr Space
   struct addrspace *child_addr_space;
   int as_copy_res;
 	as_copy_res = as_copy(curproc->p_addrspace, &child_addr_space);
-  kprintf("sys_fork 3\n");
+  DEBUG(DB_SYSCALL,"sys_fork 3\n");
 	if (as_copy_res) { // as_copy returned an error
     kfree(child_addr_space);
     proc_destroy(fork_child);
@@ -154,23 +175,23 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
 
   // Attach created address space to child process
 	fork_child->p_addrspace = child_addr_space;
-  kprintf("sys_fork 4\n");
+  DEBUG(DB_SYSCALL,"sys_fork 4\n");
   curproc_setas(fork_child->p_addrspace);
-  kprintf("sys_fork 5\n");
+  DEBUG(DB_SYSCALL,"sys_fork 5\n");
   as_activate();
-  kprintf("sys_fork 6\n");
+  DEBUG(DB_SYSCALL,"sys_fork 6\n");
 
   // Assign PID to child and create parent child relationship
   fork_child->p_parent = curproc;
-  int addRes = processArray_add(curproc->p_children, fork_child, NULL);
-  kprintf("sys_fork 7\n");
+  int addRes = array_add(curproc->p_children, fork_child, NULL);
+  DEBUG(DB_SYSCALL,"sys_fork 7\n");
   if (addRes) {
     kprintf("Adding child failed for Parent: %d, Child: %d\n", curproc->p_pid, fork_child->p_pid);
   }
 
   // Create Trapframe Space
   struct trapframe *child_trapframe = kmalloc(sizeof(struct trapframe));
-  kprintf("sys_fork 8\n");
+  DEBUG(DB_SYSCALL,"sys_fork 8\n");
   if (child_trapframe == NULL) {
     kfree(child_trapframe);
     as_destroy(child_addr_space);
@@ -179,17 +200,18 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
   }
 
   // Pass trapframe to child thread
-	memcpy(&child_trapframe, tf, sizeof(struct trapframe));
-  kprintf("sys_fork 9\n");
+  *child_trapframe = *tf;
+  DEBUG(DB_SYSCALL,"sys_fork 9\n");
+  KASSERT(fork_child->p_pid > 0);
   *retval = fork_child->p_pid;
 
   void *data = kmalloc(sizeof(void *));
   data = (void *)child_trapframe;
-  kprintf("sys_fork 10\n");
+  DEBUG(DB_SYSCALL,"sys_fork 10\n");
   int thread_fork_res;
   // Run Helper function defined in syscall.c, it will advance the PC and call mips_usermode
   thread_fork_res = thread_fork("fork_child", fork_child, &enter_forked_process, data, 0);
-  kprintf("sys_fork ");
+  DEBUG(DB_SYSCALL,"sys_fork 11\n");
 
   if (thread_fork_res) {
     *retval = -1;

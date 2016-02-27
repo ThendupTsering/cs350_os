@@ -42,11 +42,6 @@
  * process that will have more than one thread is the kernel process.
  */
 
-#if OPT_A2
-#define PROCINLINE
-#include <array.h>
-#endif
-
 #include <types.h>
 #include <proc.h>
 #include <current.h>
@@ -62,12 +57,6 @@
 struct proc *kproc;
 
 /*
- * Array of processes
- */
-static struct processArray procArray;
-
-
-/*
  * Mechanism for making the kernel menu thread sleep while processes are running
  */
 #ifdef UW
@@ -80,7 +69,19 @@ static struct semaphore *proc_count_mutex;
 struct semaphore *no_proc_sem;
 #endif  // UW
 
-
+#if OPT_A2
+	int nextFreePID(struct array *processArray) {
+		int length = array_num(processArray);
+		int newPID = length + 1;
+		for (int i = 0; i < length; i++) {
+			if (array_get(processArray,i) == NULL) {
+				newPID = i+1;
+				return newPID;
+			}
+		}
+		return newPID;
+	}
+#endif
 
 /*
  * Create a proc structure.
@@ -89,7 +90,6 @@ static
 struct proc *
 proc_create(const char *name)
 {
-	kprintf("proc_create 1\n");
 	struct proc *proc;
 
 	proc = kmalloc(sizeof(*proc));
@@ -101,10 +101,8 @@ proc_create(const char *name)
 		kfree(proc);
 		return NULL;
 	}
-	kprintf("proc_create 2\n");
 	threadarray_init(&proc->p_threads);
 	spinlock_init(&proc->p_lock);
-	kprintf("proc_create 3\n");
 	/* VM fields */
 	proc->p_addrspace = NULL;
 
@@ -114,33 +112,6 @@ proc_create(const char *name)
 #ifdef UW
 	proc->console = NULL;
 #endif // UW
-
-#if OPT_A2
-	kprintf("proc_create 4\n");
-	proc->p_exit_status = 0;
-	proc->p_parent = NULL;
-	proc->p_canExit = false;
-	kprintf("proc_create 5\n");
-	processArray_init(&proc->p_children);
-	int addRes = processArray_add(&procArray, proc, NULL);
-	if (addRes) {
-    kprintf("Adding proc failed in Function: proc_create\n");
-  }
-	kprintf("proc_create 6\n");
-	proc->p_lock_wait = lock_create("process_lock");
-	if (proc->p_lock_wait == NULL) {
-    panic("could not create process lock");
-  }
-	kprintf("proc_create 7\n");
-	proc->p_cv_wait = cv_create("process_cv");
-	if (proc->p_cv_wait == NULL) {
-    panic("could not create process cv");
-  }
-	kprintf("proc_create 8\n");
-	unsigned proc_pid = processArray_num(&procArray);
-	proc->p_pid = proc_pid;
-	kprintf("proc_create 9\n");
-#endif
 
 	return proc;
 }
@@ -162,33 +133,6 @@ proc_destroy(struct proc *proc)
 
 	KASSERT(proc != NULL);
 	KASSERT(proc != kproc);
-
-#if OPT_A2
-	spinlock_acquire(&proc->p_lock);
-	for (unsigned idx = 0; idx < processArray_num(&proc->p_children); idx++) {
-		struct proc *orphan = processArray_get(&proc->p_children, idx);
-		orphan->p_parent = NULL;
-	}
-	spinlock_release(&proc->p_lock);
-
-	if (proc->p_parent != NULL) {
-		spinlock_acquire(&proc->p_parent->p_lock);
-		for (unsigned idx = 0; idx < processArray_num(&proc->p_parent->p_children); idx++){
-			struct proc *orphan = processArray_get(&procArray, idx);
-			if (orphan->p_pid == proc->p_pid){
-				processArray_remove(proc->p_parent->p_children, idx);
-				break;
-			}
-		}
-		spinlock_release(&proc->p_parent->p_lock);
-	} else {
-		lock_destroy(proc->p_lock_wait);
-		cv_destroy(proc->p_cv_wait);
-		kfree(proc);
-	}
-#else
-	kfree(proc);
-#endif
 
 	/*
 	 * We don't take p_lock in here because we must have the only
@@ -229,6 +173,43 @@ proc_destroy(struct proc *proc)
 	}
 #endif // UW
 
+#if OPT_A2
+	// Remove Parent relationship from all children of calling proc
+	spinlock_acquire(&proc->p_lock);
+	DEBUG(DB_SYSCALL,"proc_destroy: 1\n");
+	for (unsigned idx = 0; idx < array_num(proc->p_children); idx++) {
+		struct proc *orphan = array_get(proc->p_children, idx);
+		orphan->p_parent = NULL;
+	}
+	DEBUG(DB_SYSCALL,"proc_destroy: 2\n");
+	spinlock_release(&proc->p_lock);
+
+	// Remove child relationship from parent
+	if (proc->p_parent != NULL) {
+		spinlock_acquire(&proc->p_parent->p_lock);
+		DEBUG(DB_SYSCALL,"proc_destroy: 3\n");
+		for (unsigned idx = 0; idx < array_num(proc->p_parent->p_children); idx++) {
+			struct proc *orphan = array_get(proc->p_parent->p_children, idx);
+			if (orphan->p_pid == proc->p_pid){
+				array_remove(proc->p_parent->p_children, idx);
+				break;
+			}
+		}
+		DEBUG(DB_SYSCALL,"proc_destroy: 4\n");
+		spinlock_release(&proc->p_parent->p_lock);
+	} else {
+		// No parent, remove from global process array
+		lock_destroy(proc->p_lock_wait);
+		cv_destroy(proc->p_cv_wait);
+		DEBUG(DB_SYSCALL,"proc_destroy: 5\n");
+		lock_acquire(procLock);
+		array_set(processArray, proc->p_pid-1, NULL);
+		DEBUG(DB_SYSCALL,"proc_destroy: 6\n");
+		lock_release(procLock);
+	}
+#endif
+
+
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
 
@@ -260,7 +241,8 @@ void
 proc_bootstrap(void)
 {
 #if OPT_A2
-	processArray_init(&procArray);
+	processArray = array_create();
+	procLock= lock_create("process_arr_lock");
 #endif
   kproc = proc_create("[kernel]");
   if (kproc == NULL) {
@@ -291,12 +273,37 @@ proc_create_runprogram(const char *name)
 	struct proc *proc;
 	char *console_path;
 
-	kprintf("proc_create_runprogram 1\n");
 	proc = proc_create(name);
-	kprintf("proc_create_runprogram 2\n");
 	if (proc == NULL) {
 		return NULL;
 	}
+
+#if OPT_A2
+	DEBUG(DB_SYSCALL,"proc_create_runprogram 1\n");
+	int proc_pid = nextFreePID(processArray);
+	proc->p_pid = proc_pid;
+	proc->p_exit_status = 0;
+	proc->p_parent = NULL;
+	proc->p_canExit = false;
+	DEBUG(DB_SYSCALL,"proc_create_runprogram 2\n");
+	proc->p_children = array_create();
+	lock_acquire(procLock);
+	int addRes = array_add(processArray, proc, NULL);
+	if (addRes) {
+    kprintf("Adding proc failed in Function: proc_create_runprogram\n");
+  }
+	lock_release(procLock);
+	DEBUG(DB_SYSCALL,"proc_create_runprogram 3\n");
+	proc->p_lock_wait = lock_create("process_lock");
+	if (proc->p_lock_wait == NULL) {
+    panic("could not create process lock");
+  }
+	DEBUG(DB_SYSCALL,"proc_create_runprogram 4\n");
+	proc->p_cv_wait = cv_create("process_cv");
+	if (proc->p_cv_wait == NULL) {
+    panic("could not create process cv");
+  }
+#endif
 
 #ifdef UW
 	/* open the console - this should always succeed */
@@ -435,20 +442,3 @@ curproc_setas(struct addrspace *newas)
 	spinlock_release(&proc->p_lock);
 	return oldas;
 }
-
-
-#if OPT_A2
-  struct proc* getProc(int pid) {
-  	int length = processArray_num(&procArray);
-  	struct proc *cur_proc = NULL;
-  	for (int i = 0; i < length; i++) {
-  		cur_proc = processArray_get(&procArray, i);
-  		if (cur_proc->p_pid == pid) {
-  			return cur_proc;
-  		} else {
-  			cur_proc = NULL;
-  		}
-  	}
-  	return cur_proc;
-  }
-#endif
