@@ -50,10 +50,15 @@ struct semaphore;
 #endif // UW
 
 #if OPT_A2
-	struct array *processArray;
+	struct ProcHolder {
+		struct proc *p_proc;
+		int *p_exit_status;
+	};
+
+	struct array *processTable;
 	struct lock *procLock;
 	struct proc *findChild(struct proc *curProc, int pid);
-	void nextFreePIDSetProc(struct array *processArray, struct proc *proc);
+	void nextFreePIDSetProc(struct array *processTable, struct ProcHolder *procHolder);
 #endif
 
 /*

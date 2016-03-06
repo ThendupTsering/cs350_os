@@ -70,23 +70,23 @@ struct semaphore *no_proc_sem;
 #endif  // UW
 
 #if OPT_A2
-	void nextFreePIDSetProc(struct array *processArray, struct proc *proc) {
-		int length = array_num(processArray);
+	void nextFreePIDSetProc(struct array *processTable, struct ProcHolder *procHolder) {
+		int length = array_num(processTable);
 		DEBUG(DB_SYSCALL,"Array Length:  %d\n", length);
 		int newPID = length+1;
 		bool emptySpaceFound = false;
 		for (int i = 0; i < length; i++) {
-			if (array_get(processArray, i) == NULL) {
+			if (array_get(processTable, i) == NULL) {
 				emptySpaceFound = true;
 				newPID = i+1;
 				break;
 			}
 		}
-		proc->p_pid = newPID;
+		procHolder->p_proc->p_pid = newPID;
 		if (emptySpaceFound) {
-			array_set(processArray, newPID - 1, proc);
+			array_set(processTable, newPID - 1, procHolder);
 		} else {
-			array_add(processArray, proc, NULL);
+			array_add(processTable, procHolder, NULL);
 		}
 	}
 #endif
@@ -210,7 +210,8 @@ proc_destroy(struct proc *proc)
 		lock_destroy(proc->p_lock_wait);
 		cv_destroy(proc->p_cv_wait);
 		lock_acquire(procLock);
-		array_set(processArray, proc->p_pid-1, NULL);
+		// Remove proc structure based on exit status.
+		// array_set(processTable, proc->p_pid-1, NULL); // Only if exit status condition is met
 		lock_release(procLock);
 
 	}
@@ -247,8 +248,8 @@ void
 proc_bootstrap(void)
 {
 #if OPT_A2
-	processArray = array_create();
-	procLock= lock_create("process_arr_lock");
+	processTable = array_create();
+	procLock= lock_create("process_tbl_lock");
 #endif
   kproc = proc_create("[kernel]");
   if (kproc == NULL) {
@@ -307,7 +308,10 @@ proc_create_runprogram(const char *name)
 
 	lock_acquire(procLock);
 	// Get and set pid for process
-	nextFreePIDSetProc(processArray,proc);
+	struct ProcHolder *procHolder = kmalloc(sizeof (struct ProcHolder));
+	procHolder->p_exit_status = 0;
+	procHolder->p_proc = proc;
+	nextFreePIDSetProc(processTable, procHolder);
 	lock_release(procLock);
 
 #endif
