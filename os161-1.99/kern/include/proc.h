@@ -53,7 +53,7 @@ struct semaphore;
 	struct array *processArray;
 	struct lock *procLock;
 	struct proc *findChild(struct proc *curProc, int pid);
-	int nextFreePID(struct array *processArray);
+	void nextFreePIDSetProc(struct array *processArray, struct proc *proc);
 #endif
 
 /*

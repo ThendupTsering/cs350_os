@@ -70,16 +70,24 @@ struct semaphore *no_proc_sem;
 #endif  // UW
 
 #if OPT_A2
-	int nextFreePID(struct array *processArray) {
+	void nextFreePIDSetProc(struct array *processArray, struct proc *proc) {
 		int length = array_num(processArray);
-		int newPID = length + 1;
+		DEBUG(DB_SYSCALL,"Array Length:  %d\n", length);
+		int newPID = length+1;
+		bool emptySpaceFound = false;
 		for (int i = 0; i < length; i++) {
-			if (array_get(processArray,i) == NULL) {
+			if (array_get(processArray, i) == NULL) {
+				emptySpaceFound = true;
 				newPID = i+1;
-				return newPID;
+				break;
 			}
 		}
-		return newPID;
+		proc->p_pid = newPID;
+		if (emptySpaceFound) {
+			array_set(processArray, newPID - 1, proc);
+		} else {
+			array_add(processArray, proc, NULL);
+		}
 	}
 #endif
 
@@ -174,20 +182,19 @@ proc_destroy(struct proc *proc)
 #endif // UW
 
 #if OPT_A2
+	DEBUG(DB_SYSCALL,"Destroy Proc: %d\n", proc->p_pid);
+
 	// Remove Parent relationship from all children of calling proc
 	spinlock_acquire(&proc->p_lock);
-	DEBUG(DB_SYSCALL,"proc_destroy: 1\n");
 	for (unsigned idx = 0; idx < array_num(proc->p_children); idx++) {
 		struct proc *orphan = array_get(proc->p_children, idx);
 		orphan->p_parent = NULL;
 	}
-	DEBUG(DB_SYSCALL,"proc_destroy: 2\n");
 	spinlock_release(&proc->p_lock);
 
 	// Remove child relationship from parent
 	if (proc->p_parent != NULL) {
 		spinlock_acquire(&proc->p_parent->p_lock);
-		DEBUG(DB_SYSCALL,"proc_destroy: 3\n");
 		for (unsigned idx = 0; idx < array_num(proc->p_parent->p_children); idx++) {
 			struct proc *orphan = array_get(proc->p_parent->p_children, idx);
 			if (orphan->p_pid == proc->p_pid){
@@ -195,20 +202,19 @@ proc_destroy(struct proc *proc)
 				break;
 			}
 		}
-		DEBUG(DB_SYSCALL,"proc_destroy: 4\n");
 		spinlock_release(&proc->p_parent->p_lock);
+
 	} else {
+
 		// No parent, remove from global process array
 		lock_destroy(proc->p_lock_wait);
 		cv_destroy(proc->p_cv_wait);
-		DEBUG(DB_SYSCALL,"proc_destroy: 5\n");
 		lock_acquire(procLock);
 		array_set(processArray, proc->p_pid-1, NULL);
-		DEBUG(DB_SYSCALL,"proc_destroy: 6\n");
 		lock_release(procLock);
+
 	}
 #endif
-
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
@@ -279,30 +285,31 @@ proc_create_runprogram(const char *name)
 	}
 
 #if OPT_A2
-	DEBUG(DB_SYSCALL,"proc_create_runprogram 1\n");
-	int proc_pid = nextFreePID(processArray);
-	proc->p_pid = proc_pid;
+
 	proc->p_exit_status = 0;
 	proc->p_parent = NULL;
 	proc->p_canExit = false;
-	DEBUG(DB_SYSCALL,"proc_create_runprogram 2\n");
+
+	// Create Children for Process
 	proc->p_children = array_create();
-	lock_acquire(procLock);
-	int addRes = array_add(processArray, proc, NULL);
-	if (addRes) {
-    kprintf("Adding proc failed in Function: proc_create_runprogram\n");
-  }
-	lock_release(procLock);
-	DEBUG(DB_SYSCALL,"proc_create_runprogram 3\n");
+
+	// Create Lock for Process
 	proc->p_lock_wait = lock_create("process_lock");
 	if (proc->p_lock_wait == NULL) {
     panic("could not create process lock");
   }
-	DEBUG(DB_SYSCALL,"proc_create_runprogram 4\n");
+
+	// Create CV for Process
 	proc->p_cv_wait = cv_create("process_cv");
 	if (proc->p_cv_wait == NULL) {
     panic("could not create process cv");
   }
+
+	lock_acquire(procLock);
+	// Get and set pid for process
+	nextFreePIDSetProc(processArray,proc);
+	lock_release(procLock);
+
 #endif
 
 #ifdef UW
@@ -332,6 +339,7 @@ proc_create_runprogram(const char *name)
 		proc->p_cwd = curproc->p_cwd;
 	}
 #else // UW
+
 	spinlock_acquire(&curproc->p_lock);
 	if (curproc->p_cwd != NULL) {
 		VOP_INCREF(curproc->p_cwd);
