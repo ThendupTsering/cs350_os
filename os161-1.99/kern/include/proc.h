@@ -52,12 +52,18 @@ struct semaphore;
 #if OPT_A2
 	struct ProcHolder {
 		struct proc *p_proc;
-		int *p_exit_status;
+		pid_t p_pid;
+		bool p_canExit;
+		int p_exit_status;
+		struct ProcHolder *p_parent;
+		struct array *p_children;
+		struct lock *p_lock_wait;
+	 	struct cv *p_cv_wait;
 	};
 
 	struct array *processTable;
-	struct lock *procLock;
-	struct proc *findChild(struct proc *curProc, int pid);
+	struct lock *procTableLock;
+	struct ProcHolder *getProcHolder(struct array *hayStack, int needle);
 	void nextFreePIDSetProc(struct array *processTable, struct ProcHolder *procHolder);
 #endif
 
@@ -86,12 +92,6 @@ struct proc {
 
 #if OPT_A2
 	pid_t p_pid;
-	int p_exit_status;
-	struct proc *p_parent;
-	struct array *p_children;
-	bool p_canExit;
-	struct lock *p_lock_wait;
- 	struct cv *p_cv_wait;
 #endif
 };
 

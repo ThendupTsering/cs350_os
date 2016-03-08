@@ -82,6 +82,7 @@ struct semaphore *no_proc_sem;
 				break;
 			}
 		}
+		procHolder->p_pid = newPID;
 		procHolder->p_proc->p_pid = newPID;
 		if (emptySpaceFound) {
 			array_set(processTable, newPID - 1, procHolder);
@@ -184,35 +185,39 @@ proc_destroy(struct proc *proc)
 #if OPT_A2
 	DEBUG(DB_SYSCALL,"Destroy Proc: %d\n", proc->p_pid);
 
+	// Get ProcHolder for proc being deleted
+	struct ProcHolder *destProcHolder = NULL;
+	destProcHolder = getProcHolder(processTable, proc->p_pid);
+
 	// Remove Parent relationship from all children of calling proc
 	spinlock_acquire(&proc->p_lock);
-	for (unsigned idx = 0; idx < array_num(proc->p_children); idx++) {
-		struct proc *orphan = array_get(proc->p_children, idx);
+	for (unsigned idx = 0; idx < array_num(destProcHolder->p_children); idx++) {
+		struct ProcHolder *orphan = array_get(destProcHolder->p_children, idx);
 		orphan->p_parent = NULL;
 	}
 	spinlock_release(&proc->p_lock);
 
 	// Remove child relationship from parent
-	if (proc->p_parent != NULL) {
-		spinlock_acquire(&proc->p_parent->p_lock);
-		for (unsigned idx = 0; idx < array_num(proc->p_parent->p_children); idx++) {
-			struct proc *orphan = array_get(proc->p_parent->p_children, idx);
-			if (orphan->p_pid == proc->p_pid){
-				array_remove(proc->p_parent->p_children, idx);
+	if (destProcHolder->p_parent != NULL) {
+		spinlock_acquire(&destProcHolder->p_parent->p_proc->p_lock);
+		for (unsigned idx = 0; idx < array_num(destProcHolder->p_parent->p_children); idx++) {
+			struct ProcHolder *orphan = array_get(destProcHolder->p_parent->p_children, idx);
+			if (orphan->p_pid == proc->p_pid) {
+				array_remove(destProcHolder->p_parent->p_children, idx);
 				break;
 			}
 		}
-		spinlock_release(&proc->p_parent->p_lock);
+		spinlock_release(&destProcHolder->p_parent->p_proc->p_lock);
 
 	} else {
 
 		// No parent, remove from global process array
-		lock_destroy(proc->p_lock_wait);
-		cv_destroy(proc->p_cv_wait);
-		lock_acquire(procLock);
+		lock_destroy(destProcHolder->p_lock_wait);
+		cv_destroy(destProcHolder->p_cv_wait);
+		lock_acquire(procTableLock);
 		// Remove proc structure based on exit status.
 		// array_set(processTable, proc->p_pid-1, NULL); // Only if exit status condition is met
-		lock_release(procLock);
+		lock_release(procTableLock);
 
 	}
 #endif
@@ -249,7 +254,7 @@ proc_bootstrap(void)
 {
 #if OPT_A2
 	processTable = array_create();
-	procLock= lock_create("process_tbl_lock");
+	procTableLock= lock_create("process_tbl_lock");
 #endif
   kproc = proc_create("[kernel]");
   if (kproc == NULL) {
@@ -287,32 +292,32 @@ proc_create_runprogram(const char *name)
 
 #if OPT_A2
 
-	proc->p_exit_status = 0;
-	proc->p_parent = NULL;
-	proc->p_canExit = false;
+	struct ProcHolder *procHolder = kmalloc(sizeof (struct ProcHolder));
+
+	procHolder->p_parent = NULL;
 
 	// Create Children for Process
-	proc->p_children = array_create();
+	procHolder->p_children = array_create();
 
 	// Create Lock for Process
-	proc->p_lock_wait = lock_create("process_lock");
-	if (proc->p_lock_wait == NULL) {
+	procHolder->p_lock_wait = lock_create("process_lock");
+	if (procHolder->p_lock_wait == NULL) {
     panic("could not create process lock");
   }
 
 	// Create CV for Process
-	proc->p_cv_wait = cv_create("process_cv");
-	if (proc->p_cv_wait == NULL) {
+	procHolder->p_cv_wait = cv_create("process_cv");
+	if (procHolder->p_cv_wait == NULL) {
     panic("could not create process cv");
   }
 
-	lock_acquire(procLock);
+	lock_acquire(procTableLock);
 	// Get and set pid for process
-	struct ProcHolder *procHolder = kmalloc(sizeof (struct ProcHolder));
 	procHolder->p_exit_status = 0;
 	procHolder->p_proc = proc;
+	procHolder->p_canExit = false;
 	nextFreePIDSetProc(processTable, procHolder);
-	lock_release(procLock);
+	lock_release(procTableLock);
 
 #endif
 

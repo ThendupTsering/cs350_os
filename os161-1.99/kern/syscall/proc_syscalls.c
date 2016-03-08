@@ -20,20 +20,21 @@
 
 
 #if OPT_A2
-  // Check is proc with pid is curProc's child
-  struct proc *findChild(struct proc *curProc, int pid) {
-  	int length = array_num(curProc->p_children);
-  	struct proc *child = NULL;
-  	for (int i = 0; i < length; i++) {
-  		child = array_get(curProc->p_children, i);
-  		if (child->p_pid == pid) {
-  			return child;
-  		} else {
-  			child = NULL;
-  		}
-  	}
-  	return child;
+
+  struct ProcHolder *getProcHolder(struct array *hayStack, int needle) {
+    int length = array_num(hayStack);
+    struct ProcHolder *candProcHolder = NULL;
+    for (int i = 0; i < length; i++) {
+      candProcHolder = array_get(hayStack, i);
+      if (candProcHolder->p_pid == needle) {
+        return candProcHolder;
+      } else {
+        candProcHolder = NULL;
+      }
+    }
+    return candProcHolder;
   }
+
 #endif
 
 void sys__exit(int exitcode) {
@@ -63,14 +64,15 @@ void sys__exit(int exitcode) {
   proc_remthread(curthread);
 
   #if OPT_A2
+  struct ProcHolder *curproc_holder = NULL;
+  curproc_holder = getProcHolder(processTable, p->p_pid);
   DEBUG(DB_SYSCALL,"Exit Proc: %d\n",p->p_pid);
 
-  p->p_exit_status = _MKWAIT_EXIT(exitcode);
-  p->p_canExit = true;
+  curproc_holder->p_exit_status = _MKWAIT_EXIT(exitcode);
 
-  lock_acquire(p->p_lock_wait);
-  cv_broadcast(p->p_cv_wait, p->p_lock_wait);
-  lock_release(p->p_lock_wait);
+  lock_acquire(curproc_holder->p_lock_wait);
+  cv_broadcast(curproc_holder->p_cv_wait, curproc_holder->p_lock_wait);
+  lock_release(curproc_holder->p_lock_wait);
 
   #endif
 
@@ -110,22 +112,20 @@ sys_waitpid(pid_t pid,
   int result;
 
 #if OPT_A2
-  bool isCallerRelated = false;
-  struct proc *caller_proc = findChild(curproc, pid);
+  struct ProcHolder *cur_proc_holder = getProcHolder(processTable, curproc->p_pid);
+  struct ProcHolder *child_proc_holder = getProcHolder(cur_proc_holder->p_children, pid);
 
-  if (caller_proc != NULL) {
-    isCallerRelated = true;
+  if (child_proc_holder != NULL) { // Calling proc is the parent of child
+    lock_acquire(child_proc_holder->p_lock_wait);
+    while (cur_proc_holder->p_canExit == false)  {
+      cv_wait(child_proc_holder->p_cv_wait, child_proc_holder->p_lock_wait);
+    }
+    lock_release(child_proc_holder->p_lock_wait);
+    exitstatus = child_proc_holder->p_exit_status;
   } else {
-    kprintf ("Current proc: %d is not parent of %d\n", curproc->p_pid, pid);
+    kprintf ("System WAIT: Current proc: %d is not parent of %d\n", curproc->p_pid, pid);
     return(ECHILD);
   }
-
-  lock_acquire(caller_proc->p_lock_wait);
-  while (caller_proc->p_canExit == false)  {
-    cv_wait(caller_proc->p_cv_wait, caller_proc->p_lock_wait);
-  }
-  lock_release(caller_proc->p_lock_wait);
-  exitstatus = caller_proc->p_exit_status;
 
 #else
   /* this is just a stub implementation that always reports an
@@ -156,6 +156,9 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
 
   // Create Proc for Child Process
 	struct proc *fork_child = proc_create_runprogram("fork_child_proc");
+  struct ProcHolder *fork_child_holder = getProcHolder(processTable, fork_child->p_pid);
+  struct ProcHolder *curproc_holder = getProcHolder(processTable, curproc->p_pid);
+
   DEBUG(DB_SYSCALL,"Cur Proc PID: %d\n", curproc->p_pid);
   DEBUG(DB_SYSCALL,"Fork child PID: %d\n", fork_child->p_pid);
 
@@ -172,8 +175,8 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
 	}
 
   // Assign PID to child and create parent child relationship
-  fork_child->p_parent = curproc;
-  int addRes = array_add(curproc->p_children, fork_child, NULL);
+  fork_child_holder->p_parent = curproc_holder;
+  int addRes = array_add(curproc_holder->p_children, fork_child_holder, NULL);
   if (addRes) {
     kprintf("Adding child failed for Parent: %d, Child: %d\n", curproc->p_pid, fork_child->p_pid);
   }
