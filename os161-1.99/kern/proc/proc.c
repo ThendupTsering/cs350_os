@@ -72,7 +72,6 @@ struct semaphore *no_proc_sem;
 #if OPT_A2
 	void nextFreePIDSetProc(struct array *processTable, struct ProcHolder *procHolder) {
 		int length = array_num(processTable);
-		DEBUG(DB_SYSCALL,"Array Length:  %d\n", length);
 		int newPID = length+1;
 		bool emptySpaceFound = false;
 		for (int i = 0; i < length; i++) {
@@ -89,6 +88,20 @@ struct semaphore *no_proc_sem;
 		} else {
 			array_add(processTable, procHolder, NULL);
 		}
+	}
+
+	void printArr() {
+		kprintf("\t\t");
+		int length = array_num(processTable);
+		for (int i = 0; i < length; i++) {
+			struct ProcHolder *p = array_get(processTable, i);
+			if (p != NULL) {
+				kprintf("_%d_", p->p_pid);
+			} else {
+				kprintf("_*_");
+			}
+		}
+		kprintf("\n");
 	}
 #endif
 
@@ -183,7 +196,8 @@ proc_destroy(struct proc *proc)
 #endif // UW
 
 #if OPT_A2
-	DEBUG(DB_SYSCALL,"Destroy Proc: %d\n", proc->p_pid);
+	lock_acquire(procTableLock);
+	DEBUG(DB_SYSCALL,"Destroy: Proc %d is being destroyed\n", proc->p_pid);
 
 	// Get ProcHolder for proc being deleted
 	struct ProcHolder *destProcHolder = NULL;
@@ -193,6 +207,7 @@ proc_destroy(struct proc *proc)
 	spinlock_acquire(&proc->p_lock);
 	for (unsigned idx = 0; idx < array_num(destProcHolder->p_children); idx++) {
 		struct ProcHolder *orphan = array_get(destProcHolder->p_children, idx);
+		DEBUG(DB_SYSCALL,"\tDestroy: Proc %d has Child %d\n", destProcHolder->p_pid, orphan->p_pid);
 		orphan->p_parent = NULL;
 	}
 	spinlock_release(&proc->p_lock);
@@ -203,23 +218,28 @@ proc_destroy(struct proc *proc)
 		for (unsigned idx = 0; idx < array_num(destProcHolder->p_parent->p_children); idx++) {
 			struct ProcHolder *orphan = array_get(destProcHolder->p_parent->p_children, idx);
 			if (orphan->p_pid == proc->p_pid) {
+				DEBUG(DB_SYSCALL,"\tDestroy: Proc %d has Parent %d\n", destProcHolder->p_pid, destProcHolder->p_parent->p_pid);
 				array_remove(destProcHolder->p_parent->p_children, idx);
 				break;
 			}
 		}
 		spinlock_release(&destProcHolder->p_parent->p_proc->p_lock);
+	}
 
-	} else {
-
-		// No parent, remove from global process array
+	// No parent, remove from global process array
+	if (destProcHolder->p_parent == NULL) {
 		lock_destroy(destProcHolder->p_lock_wait);
 		cv_destroy(destProcHolder->p_cv_wait);
-		lock_acquire(procTableLock);
-		// Remove proc structure based on exit status.
-		// array_set(processTable, proc->p_pid-1, NULL); // Only if exit status condition is met
-		lock_release(procTableLock);
-
+		kfree(destProcHolder);
+		array_set(processTable, proc->p_pid-1, NULL);
 	}
+	destProcHolder->p_proc = NULL;
+	DEBUG(DB_SYSCALL,"\tDestroy: ProcessHolder Array after Destroy is now:\n");
+	if (dbflags == DB_SYSCALL) {
+    printArr();
+  }
+	lock_release(procTableLock);
+	DEBUG(DB_SYSCALL,"Destroy: Proc %d has been successfully destroyed\n", proc->p_pid);
 #endif
 
 	threadarray_cleanup(&proc->p_threads);
@@ -291,7 +311,7 @@ proc_create_runprogram(const char *name)
 	}
 
 #if OPT_A2
-
+	lock_acquire(procTableLock);
 	struct ProcHolder *procHolder = kmalloc(sizeof (struct ProcHolder));
 
 	procHolder->p_parent = NULL;
@@ -311,14 +331,13 @@ proc_create_runprogram(const char *name)
     panic("could not create process cv");
   }
 
-	lock_acquire(procTableLock);
 	// Get and set pid for process
 	procHolder->p_exit_status = 0;
 	procHolder->p_proc = proc;
 	procHolder->p_canExit = false;
 	nextFreePIDSetProc(processTable, procHolder);
-	lock_release(procTableLock);
 
+	lock_release(procTableLock);
 #endif
 
 #ifdef UW

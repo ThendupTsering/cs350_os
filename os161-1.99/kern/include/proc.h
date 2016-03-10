@@ -65,6 +65,7 @@ struct semaphore;
 	struct lock *procTableLock;
 	struct ProcHolder *getProcHolder(struct array *hayStack, int needle);
 	void nextFreePIDSetProc(struct array *processTable, struct ProcHolder *procHolder);
+	void printArr(void);
 #endif
 
 /*
