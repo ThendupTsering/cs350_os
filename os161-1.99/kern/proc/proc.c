@@ -91,6 +91,7 @@ struct semaphore *no_proc_sem;
 	}
 
 	void printArr() {
+		lock_acquire(procTableLock);
 		kprintf("\t\t");
 		int length = array_num(processTable);
 		for (int i = 0; i < length; i++) {
@@ -102,6 +103,7 @@ struct semaphore *no_proc_sem;
 			}
 		}
 		kprintf("\n");
+		lock_release(procTableLock);
 	}
 #endif
 
@@ -196,12 +198,13 @@ proc_destroy(struct proc *proc)
 #endif // UW
 
 #if OPT_A2
-	lock_acquire(procTableLock);
 	DEBUG(DB_SYSCALL,"Destroy: Proc %d is being destroyed\n", proc->p_pid);
 
 	// Get ProcHolder for proc being deleted
-	struct ProcHolder *destProcHolder = NULL;
-	destProcHolder = getProcHolder(processTable, proc->p_pid);
+	lock_acquire(procTableLock);
+	struct ProcHolder *destProcHolder = getProcHolder(processTable, proc->p_pid);
+	KASSERT(destProcHolder != NULL);
+	lock_release(procTableLock);
 
 	// Remove Parent relationship from all children of calling proc
 	spinlock_acquire(&proc->p_lock);
@@ -223,22 +226,19 @@ proc_destroy(struct proc *proc)
 				break;
 			}
 		}
+		int numChildren = array_num(destProcHolder->p_children);
+		if (numChildren == 0) {
+			array_cleanup(destProcHolder->p_children);
+		}
 		spinlock_release(&destProcHolder->p_parent->p_proc->p_lock);
-	}
-
-	// No parent, remove from global process array
-	if (destProcHolder->p_parent == NULL) {
+	} else {
 		lock_destroy(destProcHolder->p_lock_wait);
 		cv_destroy(destProcHolder->p_cv_wait);
-		kfree(destProcHolder);
-		array_set(processTable, proc->p_pid-1, NULL);
 	}
-	destProcHolder->p_proc = NULL;
 	DEBUG(DB_SYSCALL,"\tDestroy: ProcessHolder Array after Destroy is now:\n");
 	if (dbflags == DB_SYSCALL) {
     printArr();
   }
-	lock_release(procTableLock);
 	DEBUG(DB_SYSCALL,"Destroy: Proc %d has been successfully destroyed\n", proc->p_pid);
 #endif
 
@@ -311,7 +311,6 @@ proc_create_runprogram(const char *name)
 	}
 
 #if OPT_A2
-	lock_acquire(procTableLock);
 	struct ProcHolder *procHolder = kmalloc(sizeof (struct ProcHolder));
 
 	procHolder->p_parent = NULL;
@@ -335,8 +334,8 @@ proc_create_runprogram(const char *name)
 	procHolder->p_exit_status = 0;
 	procHolder->p_proc = proc;
 	procHolder->p_canExit = false;
+	lock_acquire(procTableLock);
 	nextFreePIDSetProc(processTable, procHolder);
-
 	lock_release(procTableLock);
 #endif
 

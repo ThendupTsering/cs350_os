@@ -27,6 +27,8 @@
     for (int i = 0; i < length; i++) {
       candProcHolder = array_get(hayStack, i);
       if (candProcHolder->p_pid == needle) {
+        // kprintf("Index: %d and Pid: %d\n",i+1,candProcHolder->p_pid);
+        KASSERT(i+1 == candProcHolder->p_pid);
         return candProcHolder;
       } else {
         candProcHolder = NULL;
@@ -67,16 +69,19 @@ void sys__exit(int exitcode) {
   lock_acquire(procTableLock);
   struct ProcHolder *curproc_holder = NULL;
   curproc_holder = getProcHolder(processTable, p->p_pid);
+  lock_release(procTableLock);
   DEBUG(DB_SYSCALL,"Exit: Proc %d is exiting\n",p->p_pid);
 
   curproc_holder->p_canExit = true;
   curproc_holder->p_exit_status = _MKWAIT_EXIT(exitcode);
   DEBUG(DB_SYSCALL,"\tExit: Proc %d has exited, now broadcasting\n",p->p_pid);
 
-  lock_acquire(curproc_holder->p_lock_wait);
-  cv_broadcast(curproc_holder->p_cv_wait, curproc_holder->p_lock_wait);
-  lock_release(curproc_holder->p_lock_wait);
-  lock_release(procTableLock);
+  if (curproc_holder->p_parent != NULL) {
+    lock_acquire(curproc_holder->p_parent->p_lock_wait);
+    cv_broadcast(curproc_holder->p_parent->p_cv_wait, curproc_holder->p_parent->p_lock_wait);
+    lock_release(curproc_holder->p_parent->p_lock_wait);
+  }
+
   DEBUG(DB_SYSCALL,"Exit: Proc %d has exited completely\n",p->p_pid);
 
   #endif
@@ -117,32 +122,32 @@ sys_waitpid(pid_t pid,
   int result;
 
 #if OPT_A2
+  *retval = -1;
+  if(options!=0)
+	{
+		return(EINVAL);
+	}
   // Any proc that calls waitpid should be a child proc
+  lock_acquire(procTableLock);
   struct ProcHolder *cur_proc_holder = getProcHolder(processTable, curproc->p_pid);
-  struct ProcHolder *child_proc_holder = getProcHolder(cur_proc_holder->p_children, pid);
+  lock_release(procTableLock);
+  lock_acquire(procTableLock);
+  struct ProcHolder *child_proc_holder = getProcHolder(processTable, pid);
+  lock_release(procTableLock);
 
   DEBUG(DB_SYSCALL,"Wait: Proc %d is in WaitPID\n", pid);
-  if (child_proc_holder != NULL) { // Calling proc is the of child of current proc
-    
-    lock_acquire(child_proc_holder->p_lock_wait);
+  if (child_proc_holder->p_parent->p_pid == cur_proc_holder->p_pid) { // Calling proc is the of child of current proc
+    lock_acquire(cur_proc_holder->p_lock_wait);
     while (child_proc_holder->p_canExit == false)  {
       DEBUG(DB_SYSCALL,"\tWait: Waiting for PID %d to be exitable\n", child_proc_holder->p_pid);
-      cv_wait(child_proc_holder->p_cv_wait, child_proc_holder->p_lock_wait);
+      cv_wait(cur_proc_holder->p_cv_wait, cur_proc_holder->p_lock_wait);
     }
-    lock_release(child_proc_holder->p_lock_wait);
+    lock_release(cur_proc_holder->p_lock_wait);
+
     exitstatus = child_proc_holder->p_exit_status;
-    DEBUG(DB_SYSCALL,"\tWait: Proc %d is child of %d\n", child_proc_holder->p_pid, cur_proc_holder->p_pid);
-    if (dbflags == DB_SYSCALL) {
-      printArr();
-    }
   } else {
-    struct ProcHolder *calling_proc_holder = getProcHolder(processTable, pid);
-    if (calling_proc_holder->p_proc == NULL) { // Calling Proc is not on processTable
-      DEBUG(DB_SYSCALL,"\tWait: Proc %d does not exist in ProcessHolder Array\n", pid);
-    } else { // proc is not child of curproc
-      DEBUG(DB_SYSCALL,"\tWait: Proc %d is NOT child of %d\n", pid, cur_proc_holder->p_pid);
-      return(ECHILD);
-    }
+    DEBUG(DB_SYSCALL,"\tWait: Proc %d is NOT child of %d\n", pid, cur_proc_holder->p_pid);
+    return(ECHILD);
   }
   DEBUG(DB_SYSCALL,"\tWait: ProcessHolder Array after WaitPID is now:\n");
   if (dbflags == DB_SYSCALL) {
@@ -178,8 +183,12 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
 
   // Create Proc for Child Process
 	struct proc *fork_child = proc_create_runprogram("fork_child_proc");
+  lock_acquire(procTableLock);
   struct ProcHolder *fork_child_holder = getProcHolder(processTable, fork_child->p_pid);
+  lock_release(procTableLock);
+  lock_acquire(procTableLock);
   struct ProcHolder *curproc_holder = getProcHolder(processTable, curproc->p_pid);
+  lock_release(procTableLock);
 
   DEBUG(DB_SYSCALL,"Fork: Cur Proc %d if being forked to create child %d\n", curproc->p_pid, fork_child->p_pid);
 
@@ -231,6 +240,7 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
     *retval = -1;
     return ENOMEM;
   } else {
+    *retval = fork_child->p_pid;
     return 0;
   }
 }
