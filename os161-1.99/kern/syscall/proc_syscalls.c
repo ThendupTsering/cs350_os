@@ -70,11 +70,11 @@ void sys__exit(int exitcode) {
   struct ProcHolder *curproc_holder = NULL;
   curproc_holder = getProcHolder(processTable, p->p_pid);
   lock_release(procTableLock);
-  DEBUG(DB_SYSCALL,"Exit: Proc %d is exiting\n",p->p_pid);
+  DEBUG(DB_SYSCALL,"Exit %d: Proc %d is exiting\n",p->p_pid,p->p_pid);
 
   curproc_holder->p_canExit = true;
   curproc_holder->p_exit_status = _MKWAIT_EXIT(exitcode);
-  DEBUG(DB_SYSCALL,"\tExit: Proc %d has exited, now broadcasting\n",p->p_pid);
+  DEBUG(DB_SYSCALL,"Exit %d: Proc %d has exited, now broadcasting\n",p->p_pid,p->p_pid);
 
   if (curproc_holder->p_parent != NULL) {
     lock_acquire(curproc_holder->p_parent->p_lock_wait);
@@ -82,7 +82,7 @@ void sys__exit(int exitcode) {
     lock_release(curproc_holder->p_parent->p_lock_wait);
   }
 
-  DEBUG(DB_SYSCALL,"Exit: Proc %d has exited completely\n",p->p_pid);
+  DEBUG(DB_SYSCALL,"Exit %d: Proc %d has exited completely\n",p->p_pid,p->p_pid);
 
   #endif
 
@@ -135,25 +135,25 @@ sys_waitpid(pid_t pid,
   struct ProcHolder *child_proc_holder = getProcHolder(processTable, pid);
   lock_release(procTableLock);
 
-  DEBUG(DB_SYSCALL,"Wait: Proc %d is in WaitPID\n", pid);
+  DEBUG(DB_SYSCALL,"Wait %d: Proc %d is in WaitPID\n", pid, pid);
   if (child_proc_holder->p_parent->p_pid == cur_proc_holder->p_pid) { // Calling proc is the of child of current proc
     lock_acquire(cur_proc_holder->p_lock_wait);
     while (child_proc_holder->p_canExit == false)  {
-      DEBUG(DB_SYSCALL,"\tWait: Waiting for PID %d to be exitable\n", child_proc_holder->p_pid);
+      DEBUG(DB_SYSCALL,"Wait %d: Waiting for PID %d to be exitable\n", pid, child_proc_holder->p_pid);
       cv_wait(cur_proc_holder->p_cv_wait, cur_proc_holder->p_lock_wait);
     }
     lock_release(cur_proc_holder->p_lock_wait);
 
     exitstatus = child_proc_holder->p_exit_status;
   } else {
-    DEBUG(DB_SYSCALL,"\tWait: Proc %d is NOT child of %d\n", pid, cur_proc_holder->p_pid);
+    DEBUG(DB_SYSCALL,"Wait %d: Proc %d is NOT child of %d\n", pid, pid, cur_proc_holder->p_pid);
     return(ECHILD);
   }
-  DEBUG(DB_SYSCALL,"\tWait: ProcessHolder Array after WaitPID is now:\n");
+  DEBUG(DB_SYSCALL,"Wait %d: ProcessHolder Array after WaitPID is now:\n", pid);
   if (dbflags == DB_SYSCALL) {
     printArr();
   }
-  DEBUG(DB_SYSCALL,"Wait: Proc %d is leaving WaitPID\n", pid);
+  DEBUG(DB_SYSCALL,"Wait %d: Proc %d is leaving WaitPID\n", pid, pid);
 #else
   /* this is just a stub implementation that always reports an
      exit status of 0, regardless of the actual exit status of
@@ -190,7 +190,7 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
   struct ProcHolder *curproc_holder = getProcHolder(processTable, curproc->p_pid);
   lock_release(procTableLock);
 
-  DEBUG(DB_SYSCALL,"Fork: Cur Proc %d if being forked to create child %d\n", curproc->p_pid, fork_child->p_pid);
+  DEBUG(DB_SYSCALL,"Fork %d: Cur Proc %d if being forked to create child %d\n", curproc->p_pid, curproc->p_pid, fork_child->p_pid);
 
   KASSERT (fork_child->p_pid > 0);
 	if (fork_child == NULL)	{ // proc_create_runprogram returned NULL
@@ -231,11 +231,11 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
     kfree(child_trapframe);
     return thread_fork_res;
   }
-  DEBUG(DB_SYSCALL,"\tFork: ProcessHolder Array after Fork is now:\n");
+  DEBUG(DB_SYSCALL,"Fork %d: ProcessHolder Array after Fork is now:\n", curproc->p_pid);
   if (dbflags == DB_SYSCALL) {
     printArr();
   }
-  DEBUG(DB_SYSCALL,"Fork: Child %d has been created\n", fork_child->p_pid);
+  DEBUG(DB_SYSCALL,"Fork %d: Child %d has been created\n", curproc->p_pid, fork_child->p_pid);
   if (fork_child->p_pid < 0) {
     *retval = -1;
     return ENOMEM;

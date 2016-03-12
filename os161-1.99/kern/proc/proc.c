@@ -92,7 +92,7 @@ struct semaphore *no_proc_sem;
 
 	void printArr() {
 		lock_acquire(procTableLock);
-		kprintf("\t\t");
+		kprintf("\t");
 		int length = array_num(processTable);
 		for (int i = 0; i < length; i++) {
 			struct ProcHolder *p = array_get(processTable, i);
@@ -198,7 +198,7 @@ proc_destroy(struct proc *proc)
 #endif // UW
 
 #if OPT_A2
-	DEBUG(DB_SYSCALL,"Destroy: Proc %d is being destroyed\n", proc->p_pid);
+	DEBUG(DB_SYSCALL,"Destroy %d: Proc %d is being destroyed\n", proc->p_pid, proc->p_pid);
 
 	// Get ProcHolder for proc being deleted
 	lock_acquire(procTableLock);
@@ -210,7 +210,7 @@ proc_destroy(struct proc *proc)
 	spinlock_acquire(&proc->p_lock);
 	for (unsigned idx = 0; idx < array_num(destProcHolder->p_children); idx++) {
 		struct ProcHolder *orphan = array_get(destProcHolder->p_children, idx);
-		DEBUG(DB_SYSCALL,"\tDestroy: Proc %d has Child %d\n", destProcHolder->p_pid, orphan->p_pid);
+		DEBUG(DB_SYSCALL,"Destroy %d: Proc %d has Child %d\n", proc->p_pid, destProcHolder->p_pid, orphan->p_pid);
 		orphan->p_parent = NULL;
 	}
 	spinlock_release(&proc->p_lock);
@@ -221,7 +221,7 @@ proc_destroy(struct proc *proc)
 		for (unsigned idx = 0; idx < array_num(destProcHolder->p_parent->p_children); idx++) {
 			struct ProcHolder *orphan = array_get(destProcHolder->p_parent->p_children, idx);
 			if (orphan->p_pid == proc->p_pid) {
-				DEBUG(DB_SYSCALL,"\tDestroy: Proc %d has Parent %d\n", destProcHolder->p_pid, destProcHolder->p_parent->p_pid);
+				DEBUG(DB_SYSCALL,"Destroy %d: Proc %d has Parent %d\n", proc->p_pid, destProcHolder->p_pid, destProcHolder->p_parent->p_pid);
 				array_remove(destProcHolder->p_parent->p_children, idx);
 				break;
 			}
@@ -235,11 +235,11 @@ proc_destroy(struct proc *proc)
 		lock_destroy(destProcHolder->p_lock_wait);
 		cv_destroy(destProcHolder->p_cv_wait);
 	}
-	DEBUG(DB_SYSCALL,"\tDestroy: ProcessHolder Array after Destroy is now:\n");
+	DEBUG(DB_SYSCALL,"Destroy %d: ProcessHolder Array after Destroy is now:\n", proc->p_pid);
 	if (dbflags == DB_SYSCALL) {
     printArr();
   }
-	DEBUG(DB_SYSCALL,"Destroy: Proc %d has been successfully destroyed\n", proc->p_pid);
+	DEBUG(DB_SYSCALL,"Destroy %d: Proc %d has been successfully destroyed\n", proc->p_pid, proc->p_pid);
 #endif
 
 	threadarray_cleanup(&proc->p_threads);
