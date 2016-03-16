@@ -9,6 +9,11 @@
 #include <thread.h>
 #include <addrspace.h>
 #include <copyinout.h>
+#include <vm.h>
+#include <vfs.h>
+#include <kern/fcntl.h>
+#include <limits.h>
+
 #include "opt-A2.h"
 #if OPT_A2
   #include <synch.h>
@@ -244,4 +249,146 @@ pid_t sys_fork(struct trapframe *tf, int *retval) {
     return 0;
   }
 }
+
+int sys_execv(userptr_t progName, userptr_t args) {
+  DEBUG(DB_SYSCALL,"ExecV: Begin\n");
+  // Check for error in passing args
+  if ( ((char*) progName == NULL) || ((char**) args == NULL) ) {
+    return EFAULT;
+  }
+
+  DEBUG(DB_SYSCALL,"ExecV: Copy Args into Kernel Begin\n");
+  // Count the no. of arguments and copy them into kernel
+  char **kernArgPtrs = kmalloc(ARG_MAX);
+  bool paramsAvailable = true;
+  int paramsCopied = 0;
+  while (paramsAvailable) {
+    char *param = NULL;
+    userptr_t paramAddr = args + (paramsCopied * sizeof(char*));
+    copyin(paramAddr, &param, sizeof(char*));
+    kernArgPtrs[paramsCopied] = param;
+    if (param == NULL) {
+      paramsAvailable = false;
+      break;
+    }
+    if (strlen(param) > 1024) {
+      return E2BIG;
+    }
+    paramsCopied++;
+  }
+  DEBUG(DB_SYSCALL,"ExecV: %d Params Copied into Kernel\n", paramsCopied);
+	if (paramsCopied > 64) {
+		return E2BIG;
+	}
+
+  // Copy Program path into kernel
+  char *kernProgName = kmalloc(PATH_MAX);
+  size_t *progNameLength;
+  int res = copyinstr(progName, kernProgName, PATH_MAX, progNameLength);
+  DEBUG(DB_SYSCALL,"ExecV: CopyInStr Passed\n");
+  if (res != 0) {
+    return res;
+  }
+
+  // Create array for offsets for mem alignment later
+  int memForArgs = paramsCopied * sizeof(size_t);
+  size_t *argOffsets = kmalloc(memForArgs);
+  char *kernArgs = kmalloc(ARG_MAX);
+  int offset = 0;
+  int count = 0;
+  while (count < paramsCopied) {
+    size_t argLength;
+    int copyStrRes = copyinstr((userptr_t) kernArgPtrs[count], kernArgs + offset, ARG_MAX - offset, &argLength);
+    if (copyStrRes != 0){
+			return copyStrRes;
+		}
+    argOffsets[count] = offset;
+    argLength += 1;
+    offset += ROUNDUP(argLength, 8);
+    count++;
+  }
+  DEBUG(DB_SYSCALL,"ExecV: Array of offsets created, %d params done\n", count);
+
+  // Get CurProc AddrSpace and save it (will delete later)
+  struct addrspace *deleteAS = curproc_getas();
+
+  struct addrspace *as;
+	struct vnode *v;
+	vaddr_t entrypoint, stackptr;
+	int result;
+
+	/* Open the file. */
+	result = vfs_open(kernProgName, O_RDONLY, 0, &v);
+	if (result) {
+		return result;
+	}
+
+	/* Create a new address space. */
+	as = as_create();
+	if (as == NULL) {
+		vfs_close(v);
+		return ENOMEM;
+	}
+
+	/* Switch to it and activate it. */
+	curproc_setas(as);
+	as_activate();
+
+	/* Load the executable. */
+	result = load_elf(v, &entrypoint);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		vfs_close(v);
+		return result;
+	}
+
+	/* Done with the file now. */
+	vfs_close(v);
+
+  /* Define the user stack in the address space */
+	result = as_define_stack(as, &stackptr);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		return result;
+	}
+
+  DEBUG(DB_SYSCALL,"ExecV: Copy back to user space, begin\n");
+  vaddr_t curPtr = stackptr - offset;
+  res = copyout(kernArgs, (userptr_t) curPtr, offset);
+	if (res != 0) {
+		return res;
+	}
+
+  int paramsWithNull = paramsCopied+1;
+  int paramMemSize = paramsWithNull * sizeof(userptr_t);
+  userptr_t *argOffsetsReverse = kmalloc(paramMemSize);
+	for (int i = 0; i < paramsCopied; i++) {
+		userptr_t tempPtr = (userptr_t)curPtr + argOffsets[i];
+		argOffsetsReverse[i] = tempPtr;
+	}
+	argOffsetsReverse[paramsCopied] = NULL;
+	curPtr = curPtr - paramMemSize;
+	res = copyout(argOffsetsReverse, (userptr_t)curPtr, paramMemSize);
+	if (res != 0) {
+		return res;
+	}
+  DEBUG(DB_SYSCALL,"ExecV: Copy back to user space, done\n");
+
+  as_destroy(deleteAS);
+	kfree(kernArgPtrs);
+	kfree(kernProgName);
+  kfree(argOffsets);
+  kfree(kernArgs);
+
+  DEBUG(DB_SYSCALL,"ExecV: End\n");
+  // Call enter_new_process
+	/* Warp to user mode. */
+	enter_new_process(paramsCopied, (userptr_t) curPtr, curPtr, entrypoint);
+
+	/* enter_new_process does not return. */
+	panic("enter_new_process returned\n");
+	return EINVAL;
+
+}
+
 #endif

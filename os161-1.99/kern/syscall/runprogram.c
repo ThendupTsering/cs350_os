@@ -44,6 +44,8 @@
 #include <vfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <limits.h>
+#include <copyinout.h>
 
 /*
  * Load program "progname" and start running it in usermode.
@@ -51,8 +53,11 @@
  *
  * Calls vfs_open on progname and thus may destroy it.
  */
-int
-runprogram(char *progname)
+#if OPT_A2
+int runprogram(char *progname, unsigned int argc, char** argv)
+#else
+int runprogram(char *progname)
+#endif
 {
 	struct addrspace *as;
 	struct vnode *v;
@@ -97,12 +102,57 @@ runprogram(char *progname)
 		return result;
 	}
 
+#if OPT_A2
+	// Create array for offsets for mem alignment later
+	int memForArgs = argc * sizeof(size_t);
+	size_t *argOffsets = kmalloc(memForArgs);
+	char *kernArgs = kmalloc(ARG_MAX);
+	int offset = 0;
+	unsigned int count = 0;
+	while (count < argc) {
+		char *curArg = argv[count];
+		size_t argLength = strlen(curArg);
+		strcpy(kernArgs+offset, curArg);
+		argOffsets[count] = offset;
+		offset += ROUNDUP(argLength, 8);
+		count++;
+	}
+
+	vaddr_t curPtr = stackptr - offset;
+  result = copyout(kernArgs, (userptr_t) curPtr, offset);
+	if (result != 0) {
+		return result;
+	}
+
+  int paramsWithNull = argc+1;
+  int paramMemSize = paramsWithNull * sizeof(userptr_t);
+  userptr_t *argOffsetsReverse = kmalloc(paramMemSize);
+	for (unsigned int i = 0; i < argc; i++) {
+		userptr_t tempPtr = (userptr_t)curPtr + argOffsets[i];
+		argOffsetsReverse[i] = tempPtr;
+	}
+	argOffsetsReverse[argc] = NULL;
+	curPtr = curPtr - paramMemSize;
+	result = copyout(argOffsetsReverse, (userptr_t)curPtr, paramMemSize);
+	if (result != 0) {
+		return result;
+	}
+
+	kfree(argOffsetsReverse);
+  kfree(argOffsets);
+  kfree(kernArgs);
+
+	/* Warp to user mode. */
+	enter_new_process(argc, (userptr_t) curPtr, curPtr, entrypoint);
+
+#else
+
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
 			  stackptr, entrypoint);
-	
+
+#endif
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
 	return EINVAL;
 }
-
