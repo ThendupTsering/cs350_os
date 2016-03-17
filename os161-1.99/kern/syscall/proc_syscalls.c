@@ -298,8 +298,8 @@ int sys_execv(userptr_t progName, userptr_t args) {
   int count = 0;
   while (count < paramsCopied) {
     size_t argLength;
-    int copyStrRes = copyinstr((userptr_t) kernArgPtrs[count], kernArgs + offset, ARG_MAX - offset, &argLength);
-    if (copyStrRes != 0){
+    int copyStrRes = copyinstr((userptr_t) kernArgPtrs[count], kernArgs + offset, ARG_MAX, &argLength);
+    if (copyStrRes){
 			return copyStrRes;
 		}
     argOffsets[count] = offset;
@@ -355,21 +355,22 @@ int sys_execv(userptr_t progName, userptr_t args) {
   DEBUG(DB_SYSCALL,"ExecV: Copy back to user space, begin\n");
   vaddr_t curPtr = stackptr - offset;
   res = copyout(kernArgs, (userptr_t) curPtr, offset);
-	if (res != 0) {
+	if (res) {
 		return res;
 	}
 
   int paramsWithNull = paramsCopied+1;
   int paramMemSize = paramsWithNull * sizeof(userptr_t);
+  userptr_t tempPtr;
   userptr_t *argOffsetsReverse = kmalloc(paramMemSize);
 	for (int i = 0; i < paramsCopied; i++) {
-		userptr_t tempPtr = (userptr_t)curPtr + argOffsets[i];
+		tempPtr = (userptr_t) curPtr + argOffsets[i];
 		argOffsetsReverse[i] = tempPtr;
 	}
 	argOffsetsReverse[paramsCopied] = NULL;
 	curPtr = curPtr - paramMemSize;
 	res = copyout(argOffsetsReverse, (userptr_t)curPtr, paramMemSize);
-	if (res != 0) {
+	if (res) {
 		return res;
 	}
   DEBUG(DB_SYSCALL,"ExecV: Copy back to user space, done\n");

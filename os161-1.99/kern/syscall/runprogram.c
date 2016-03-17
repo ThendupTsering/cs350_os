@@ -114,7 +114,7 @@ int runprogram(char *progname)
 		size_t argLength = strlen(curArg);
 		strcpy(kernArgs+offset, curArg);
 		argOffsets[count] = offset;
-		offset += ROUNDUP(argLength, 8);
+		offset += ROUNDUP(argLength+1, 8);
 		count++;
 	}
 
