@@ -34,13 +34,13 @@
  * Address space structure and operations.
  */
 
-
 #include <vm.h>
+#include "opt-A3.h"
 
 struct vnode;
 
 
-/* 
+/*
  * Address space - data structure associated with the virtual memory
  * space of a process.
  *
@@ -55,12 +55,15 @@ struct addrspace {
   paddr_t as_pbase2;
   size_t as_npages2;
   paddr_t as_stackpbase;
+#if OPT_A3
+  bool loadElfComplete;
+#endif
 };
 
 /*
  * Functions in addrspace.c:
  *
- *    as_create - create a new empty address space. You need to make 
+ *    as_create - create a new empty address space. You need to make
  *                sure this gets called in all the right places. You
  *                may find you want to change the argument list. May
  *                return NULL on out-of-memory error.
@@ -99,9 +102,9 @@ void              as_activate(void);
 void              as_deactivate(void);
 void              as_destroy(struct addrspace *);
 
-int               as_define_region(struct addrspace *as, 
+int               as_define_region(struct addrspace *as,
                                    vaddr_t vaddr, size_t sz,
-                                   int readable, 
+                                   int readable,
                                    int writeable,
                                    int executable);
 int               as_prepare_load(struct addrspace *as);
