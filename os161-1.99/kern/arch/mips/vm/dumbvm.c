@@ -53,10 +53,41 @@
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
+// Local Variables
+struct CoreMap *dataCoreMap;
+int numFrames;
+bool bootStrapped = false;
+
+
 void
 vm_bootstrap(void)
 {
+#if OPT_A3
+	paddr_t low;
+	paddr_t high;
+	ram_getsize(&low, &high);
+
+	numFrames = (high - low) / PAGE_SIZE;
+	int coreMapSize = numFrames * (sizeof(struct CoreMap));
+	dataCoreMap = (struct CoreMap *) PADDR_TO_KVADDR(low);
+
+	low = low + coreMapSize; // Set low to start after coreMap
+	int lowOffset = low % PAGE_SIZE; // Align low with page size
+	low += lowOffset;
+	paddr_t frameStart = low;
+
+	int frameCounter = 0;
+	while (frameCounter < numFrames) {
+		dataCoreMap[frameCounter].startAddr = frameStart;
+		dataCoreMap[frameCounter].isOccupied = false;
+		dataCoreMap[frameCounter].isContiguous = false;
+		frameStart += PAGE_SIZE;
+		frameCounter++;
+	}
+	bootStrapped = true;
+#else
 	/* Do nothing. */
+#endif
 }
 
 static
@@ -78,7 +109,56 @@ vaddr_t
 alloc_kpages(int npages)
 {
 	paddr_t pa;
+#if OPT_A3
+	spinlock_acquire(&stealmem_lock);
+	if (bootStrapped) {
+		bool spaceAvailable = false;
+		int spaceIdx;
+		for (int frame = 0; frame < numFrames; frame++) {
+			if (!dataCoreMap[frame].isOccupied) {
+				if (npages < 2) {
+					spaceAvailable = true;
+					spaceIdx = frame;
+					break;
+				}	else { // Needs more than one page, check to see if contiguous
+					int pageCount = 1;
+					for (int next = frame + 1; next < frame + npages; next++) {
+						if (!dataCoreMap[next].isOccupied) { // Next frame is not occupied as well
+							pageCount++;
+							if (pageCount == npages) {
+								spaceAvailable = true;
+								spaceIdx = frame;
+								break;
+							} else { // Skip pages for next check
+								frame = frame + pageCount;
+								break;
+							}
+						}
+					}
+				}
+			}
+			if (spaceAvailable) {
+				break;
+			}
+		}
+		if (spaceAvailable) {
+			for (int page = 0; page < npages; page++) {
+				dataCoreMap[spaceIdx + page].isOccupied = true;
+				if (page+1 == npages) {
+					dataCoreMap[spaceIdx + page].isContiguous = false;
+				} else {
+					dataCoreMap[spaceIdx + page].isContiguous = true;
+				}
+			}
+			pa = dataCoreMap[spaceIdx].startAddr;
+		}
+	} else {
+		pa = ram_stealmem(npages);
+	}
+	spinlock_release(&stealmem_lock);
+#else
 	pa = getppages(npages);
+#endif
 	if (pa==0) {
 		return 0;
 	}
@@ -88,9 +168,25 @@ alloc_kpages(int npages)
 void
 free_kpages(vaddr_t addr)
 {
+#if OPT_A3
+	if (bootStrapped) {
+		spinlock_acquire(&stealmem_lock);
+		kprintf("Starting Free Kpages!\n");
+		for (int i = 0; i < numFrames; i++) {
+			if (dataCoreMap[i].startAddr == addr) {
+				dataCoreMap[i].isOccupied = false;
+				if (!dataCoreMap[i].isContiguous) {
+					break;
+				}
+			}
+		}
+		kprintf("Finished Free Kpages!!\n");
+		spinlock_release(&stealmem_lock);
+	}
+#else
 	/* nothing - leak the memory. */
-
 	(void)addr;
+#endif
 }
 
 void
@@ -254,6 +350,11 @@ as_create(void)
 void
 as_destroy(struct addrspace *as)
 {
+#if OPT_A3
+	free_kpages(as->as_pbase1);
+	free_kpages(as->as_pbase2);
+	free_kpages(as->as_stackpbase);
+#endif
 	kfree(as);
 }
 

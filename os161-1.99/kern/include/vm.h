@@ -38,12 +38,20 @@
 
 
 #include <machine/vm.h>
+#include "opt-A3.h"
 
 /* Fault-type arguments to vm_fault() */
 #define VM_FAULT_READ        0    /* A read was attempted */
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+#if OPT_A3
+struct CoreMap {
+  paddr_t startAddr;
+  bool isContiguous;
+  bool isOccupied;
+};
+#endif
 
 /* Initialization function */
 void vm_bootstrap(void);
